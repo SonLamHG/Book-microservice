@@ -39,6 +39,15 @@
         <a href="/categories/">Categories</a>
         <a href="/staff/">Staff</a>
         <a href="/managers/">Managers</a>
+        <span style="float:right;">
+            {% if request.session.user_data %}
+                <span style="color:#3498db;">{{ request.session.user_data.username }}</span>
+                <a href="/auth/logout/">Logout</a>
+            {% else %}
+                <a href="/auth/login/">Login</a>
+                <a href="/auth/register/">Register</a>
+            {% endif %}
+        </span>
     </nav>
     <div class="container">
         {% block content %}{% endblock %}

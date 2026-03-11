@@ -8,6 +8,7 @@ class Shipment(models.Model):
         ('EXPRESS', 'Express'),
     ]
     STATUS_CHOICES = [
+        ('RESERVED', 'Reserved'),
         ('PENDING', 'Pending'),
         ('SHIPPED', 'Shipped'),
         ('DELIVERED', 'Delivered'),

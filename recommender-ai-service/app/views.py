@@ -61,3 +61,8 @@ class Recommendations(APIView):
             "customer_id": customer_id,
             "recommendations": recommended_books[:limit],
         })
+
+
+def health_check(request):
+    from django.http import JsonResponse
+    return JsonResponse({'status': 'healthy', 'service': 'recommender-ai-service'})

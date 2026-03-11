@@ -43,3 +43,8 @@ class TopRatedBooks(APIView):
             .order_by('-avg_rating')[:limit]
         )
         return Response(list(top_books))
+
+
+def health_check(request):
+    from django.http import JsonResponse
+    return JsonResponse({'status': 'healthy', 'service': 'comment-rate-service'})

@@ -46,3 +46,8 @@ class ManagerDetail(APIView):
             return Response({"error": "Manager not found"}, status=status.HTTP_404_NOT_FOUND)
         manager.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def health_check(request):
+    from django.http import JsonResponse
+    return JsonResponse({'status': 'healthy', 'service': 'manager-service'})

@@ -5,6 +5,19 @@ from .models import Payment
 from .serializers import PaymentSerializer
 
 
+def publish_event(event_type, data):
+    try:
+        import pika
+        import json
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq', connection_attempts=3, retry_delay=1))
+        channel = connection.channel()
+        channel.exchange_declare(exchange='bookstore', exchange_type='topic', durable=True)
+        channel.basic_publish(exchange='bookstore', routing_key=event_type, body=json.dumps(data))
+        connection.close()
+    except Exception:
+        pass
+
+
 class PaymentListCreate(APIView):
     def get(self, request):
         order_id = request.query_params.get('order_id')
@@ -39,5 +52,24 @@ class PaymentDetail(APIView):
             return Response({"error": "Payment not found"}, status=status.HTTP_404_NOT_FOUND)
         payment.status = request.data.get('status', payment.status)
         payment.save()
+        if payment.status == 'COMPLETED':
+            publish_event('payment.completed', {'payment_id': payment.id, 'order_id': payment.order_id})
         serializer = PaymentSerializer(payment)
         return Response(serializer.data)
+
+
+class CancelPayment(APIView):
+    def put(self, request, pk):
+        try:
+            payment = Payment.objects.get(pk=pk)
+        except Payment.DoesNotExist:
+            return Response({"error": "Payment not found"}, status=status.HTTP_404_NOT_FOUND)
+        payment.status = 'CANCELLED'
+        payment.save()
+        serializer = PaymentSerializer(payment)
+        return Response(serializer.data)
+
+
+def health_check(request):
+    from django.http import JsonResponse
+    return JsonResponse({'status': 'healthy', 'service': 'pay-service'})

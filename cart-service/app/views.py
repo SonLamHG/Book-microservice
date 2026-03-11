@@ -88,3 +88,8 @@ class UpdateCartItem(APIView):
             return Response({"error": "Cart item not found"}, status=status.HTTP_404_NOT_FOUND)
         item.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def health_check(request):
+    from django.http import JsonResponse
+    return JsonResponse({'status': 'healthy', 'service': 'cart-service'})

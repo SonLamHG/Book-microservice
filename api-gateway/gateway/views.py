@@ -14,6 +14,7 @@ PAY_SERVICE_URL = "http://pay-service:8000"
 SHIP_SERVICE_URL = "http://ship-service:8000"
 COMMENT_RATE_SERVICE_URL = "http://comment-rate-service:8000"
 RECOMMENDER_SERVICE_URL = "http://recommender-ai-service:8000"
+AUTH_SERVICE_URL = "http://auth-service:8000"
 
 
 def home(request):
@@ -266,3 +267,58 @@ def category_create(request):
             pass
         return redirect('category_list')
     return render(request, 'category_form.html')
+
+
+# ---- Auth ----
+
+def auth_login(request):
+    if request.method == 'POST':
+        data = {
+            'username': request.POST.get('username'),
+            'password': request.POST.get('password'),
+        }
+        try:
+            r = requests.post(f"{AUTH_SERVICE_URL}/auth/login/", json=data, timeout=5)
+            if r.status_code == 200:
+                result = r.json()
+                request.session['jwt_token'] = result['token']
+                request.session['user_data'] = result['user']
+                return redirect('home')
+            else:
+                return render(request, 'login.html', {'error': 'Invalid credentials'})
+        except Exception:
+            return render(request, 'login.html', {'error': 'Auth service unavailable'})
+    return render(request, 'login.html')
+
+
+def auth_register(request):
+    if request.method == 'POST':
+        data = {
+            'username': request.POST.get('username'),
+            'email': request.POST.get('email'),
+            'password': request.POST.get('password'),
+            'role': request.POST.get('role', 'CUSTOMER'),
+        }
+        try:
+            r = requests.post(f"{AUTH_SERVICE_URL}/auth/register/", json=data, timeout=5)
+            if r.status_code == 201:
+                result = r.json()
+                request.session['jwt_token'] = result['token']
+                request.session['user_data'] = result['user']
+                return redirect('home')
+            else:
+                error = r.json().get('error', 'Registration failed')
+                return render(request, 'register.html', {'error': error})
+        except Exception:
+            return render(request, 'register.html', {'error': 'Auth service unavailable'})
+    return render(request, 'register.html')
+
+
+def auth_logout(request):
+    request.session.flush()
+    return redirect('auth_login')
+
+
+def health_check(request):
+    from django.http import JsonResponse
+    return JsonResponse({'status': 'healthy', 'service': 'api-gateway'})

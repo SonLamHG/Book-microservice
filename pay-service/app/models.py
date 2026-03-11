@@ -8,6 +8,7 @@ class Payment(models.Model):
         ('COD', 'Cash on Delivery'),
     ]
     STATUS_CHOICES = [
+        ('RESERVED', 'Reserved'),
         ('PENDING', 'Pending'),
         ('COMPLETED', 'Completed'),
         ('FAILED', 'Failed'),

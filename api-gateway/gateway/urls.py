@@ -29,4 +29,10 @@ urlpatterns = [
     # Categories
     path('categories/', views.category_list, name='category_list'),
     path('categories/create/', views.category_create, name='category_create'),
+    # Auth
+    path('auth/login/', views.auth_login, name='auth_login'),
+    path('auth/register/', views.auth_register, name='auth_register'),
+    path('auth/logout/', views.auth_logout, name='auth_logout'),
+    # Health
+    path('health/', views.health_check, name='health_check'),
 ]

@@ -5,6 +5,7 @@ from django.core.validators import MinValueValidator
 class Order(models.Model):
     STATUS_CHOICES = [
         ('PENDING', 'Pending'),
+        ('CONFIRMED', 'Confirmed'),
         ('PAID', 'Paid'),
         ('SHIPPING', 'Shipping'),
         ('COMPLETED', 'Completed'),
@@ -30,3 +31,14 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"Book {self.book_id} x{self.quantity}"
+
+
+class SagaLog(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='saga_logs')
+    step = models.CharField(max_length=50)
+    status = models.CharField(max_length=20)  # SUCCESS, FAILED, COMPENSATED
+    details = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Saga {self.order_id} - {self.step}: {self.status}"

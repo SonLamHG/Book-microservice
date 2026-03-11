@@ -1,4 +1,4 @@
-django>=4.2,<5.0
+django>=4.2
 djangorestframework>=3.14
+PyJWT>=2.8
 requests>=2.31
-pika>=1.3

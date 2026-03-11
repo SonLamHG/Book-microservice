@@ -8,12 +8,17 @@ ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'django.contrib.contenttypes',
+    'django.contrib.sessions',
     'django.contrib.staticfiles',
     'gateway',
 ]
 
 MIDDLEWARE = [
+    'gateway.middleware.LoggingMiddleware',
+    'gateway.middleware.RateLimitMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'gateway.middleware.JWTAuthMiddleware',
 ]
 
 ROOT_URLCONF = 'api_gateway.urls'
@@ -42,3 +47,28 @@ TEMPLATES = [
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 STATIC_URL = '/static/'
+
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{asctime} | {levelname} | {name} | {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'gateway': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+    },
+}
