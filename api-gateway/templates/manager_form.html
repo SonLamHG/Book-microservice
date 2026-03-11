@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}Add Manager{% endblock %}
+{% block content %}
+<h1>Add Manager</h1>
+<div class="card">
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>Name</label>
+            <input type="text" name="name" required>
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" name="email" required>
+        </div>
+        <div class="form-group">
+            <label>Department</label>
+            <input type="text" name="department">
+        </div>
+        <button type="submit" class="btn btn-success">Create</button>
+        <a href="/managers/" class="btn">Cancel</a>
+    </form>
+</div>
+{% endblock %}

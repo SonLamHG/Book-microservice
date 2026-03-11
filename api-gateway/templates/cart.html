@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}Cart{% endblock %}
+{% block content %}
+<h1>Cart for Customer #{{ customer_id }}</h1>
+
+<div class="card">
+    <h2>Add Book to Cart</h2>
+    <form method="post" action="/cart/add/" style="display: flex; gap: 10px; align-items: end;">
+        <input type="hidden" name="customer_id" value="{{ customer_id }}">
+        <div class="form-group" style="margin: 0;">
+            <label>Book ID</label>
+            <input type="number" name="book_id" required style="width: 100px;">
+        </div>
+        <div class="form-group" style="margin: 0;">
+            <label>Qty</label>
+            <input type="number" name="quantity" value="1" min="1" style="width: 70px;">
+        </div>
+        <button type="submit" class="btn btn-success">Add</button>
+    </form>
+</div>
+
+<table>
+    <tr>
+        <th>Book ID</th><th>Title</th><th>Price</th><th>Quantity</th>
+    </tr>
+    {% for item in items %}
+    <tr>
+        <td>{{ item.book_id }}</td>
+        <td>{% if item.book %}{{ item.book.title }}{% else %}N/A{% endif %}</td>
+        <td>{% if item.book %}${{ item.book.price }}{% else %}N/A{% endif %}</td>
+        <td>{{ item.quantity }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4">Cart is empty.</td></tr>
+    {% endfor %}
+</table>
+
+{% if items %}
+<div class="card">
+    <h2>Place Order</h2>
+    <form method="post" action="/orders/create/">
+        <input type="hidden" name="customer_id" value="{{ customer_id }}">
+        <div class="form-group">
+            <label>Shipping Address</label>
+            <textarea name="shipping_address" rows="2" required></textarea>
+        </div>
+        <div class="form-group">
+            <label>Payment Method</label>
+            <select name="payment_method">
+                <option value="COD">Cash on Delivery</option>
+                <option value="CREDIT_CARD">Credit Card</option>
+                <option value="PAYPAL">PayPal</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Shipping Method</label>
+            <select name="shipping_method">
+                <option value="STANDARD">Standard</option>
+                <option value="EXPRESS">Express</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-success">Place Order</button>
+    </form>
+</div>
+{% endif %}
+
+<a href="/customers/" class="btn">Back to Customers</a>
+{% endblock %}

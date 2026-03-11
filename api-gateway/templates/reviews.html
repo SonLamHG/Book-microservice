@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Reviews{% endblock %}
+{% block content %}
+<h1>Reviews for Book #{{ book_id }}</h1>
+
+{% if review_data.average_rating %}
+<div class="alert alert-info">
+    Average Rating: <strong>{{ review_data.average_rating }}/5</strong>
+    ({{ review_data.total_reviews }} reviews)
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>Add Review</h2>
+    <form method="post" action="/reviews/add/">
+        <input type="hidden" name="book_id" value="{{ book_id }}">
+        <div class="form-group">
+            <label>Customer ID</label>
+            <input type="number" name="customer_id" required>
+        </div>
+        <div class="form-group">
+            <label>Rating (1-5)</label>
+            <select name="rating">
+                <option value="5">5 - Excellent</option>
+                <option value="4">4 - Good</option>
+                <option value="3">3 - Average</option>
+                <option value="2">2 - Poor</option>
+                <option value="1">1 - Terrible</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Comment</label>
+            <textarea name="comment" rows="3"></textarea>
+        </div>
+        <button type="submit" class="btn btn-success">Submit Review</button>
+    </form>
+</div>
+
+{% if review_data.reviews %}
+<h2>All Reviews</h2>
+{% for review in review_data.reviews %}
+<div class="card">
+    <strong>Customer #{{ review.customer_id }}</strong> -
+    Rating: {{ review.rating }}/5<br>
+    <p style="margin-top: 5px;">{{ review.comment }}</p>
+    <small style="color: #999;">{{ review.created_at }}</small>
+</div>
+{% endfor %}
+{% endif %}
+
+<a href="/books/" class="btn">Back to Books</a>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<h1>BookStore Microservice System</h1>
+<div class="card">
+    <h2>Quick Links</h2>
+    <p style="margin: 10px 0;">
+        <a href="/books/" class="btn">Manage Books</a>
+        <a href="/customers/" class="btn btn-success">Manage Customers</a>
+        <a href="/categories/" class="btn">Categories</a>
+        <a href="/staff/" class="btn">Staff</a>
+        <a href="/managers/" class="btn">Managers</a>
+    </p>
+</div>
+<div class="card">
+    <h2>Architecture</h2>
+    <p>This system consists of 12 independent microservices:</p>
+    <ul style="margin: 10px 0 0 20px;">
+        <li><strong>customer-service</strong> (port 8001) - Customer management</li>
+        <li><strong>staff-service</strong> (port 8004) - Staff management</li>
+        <li><strong>manager-service</strong> (port 8005) - Manager management</li>
+        <li><strong>catalog-service</strong> (port 8006) - Category management</li>
+        <li><strong>book-service</strong> (port 8002) - Book CRUD</li>
+        <li><strong>cart-service</strong> (port 8003) - Shopping cart</li>
+        <li><strong>order-service</strong> (port 8007) - Order processing</li>
+        <li><strong>pay-service</strong> (port 8008) - Payment processing</li>
+        <li><strong>ship-service</strong> (port 8009) - Shipping management</li>
+        <li><strong>comment-rate-service</strong> (port 8010) - Reviews & ratings</li>
+        <li><strong>recommender-ai-service</strong> (port 8011) - Book recommendations</li>
+        <li><strong>api-gateway</strong> (port 8000) - This web interface</li>
+    </ul>
+</div>
+{% endblock %}

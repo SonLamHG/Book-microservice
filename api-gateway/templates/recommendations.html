@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Recommendations{% endblock %}
+{% block content %}
+<h1>Recommendations for Customer #{{ customer_id }}</h1>
+
+{% if data.recommendations %}
+<table>
+    <tr>
+        <th>Title</th><th>Author</th><th>Price</th><th>Avg Rating</th>
+    </tr>
+    {% for book in data.recommendations %}
+    <tr>
+        <td>{{ book.title }}</td>
+        <td>{{ book.author }}</td>
+        <td>${{ book.price }}</td>
+        <td>{% if book.avg_rating %}{{ book.avg_rating }}/5{% else %}N/A{% endif %}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<div class="alert alert-info">No recommendations available yet. Browse and rate some books first!</div>
+{% endif %}
+
+<a href="/customers/" class="btn">Back to Customers</a>
+{% endblock %}

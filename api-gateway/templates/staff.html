@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Staff{% endblock %}
+{% block content %}
+<h1>Staff List</h1>
+<p style="margin-bottom: 15px;">
+    <a href="/staff/create/" class="btn btn-success">+ Add Staff</a>
+</p>
+<table>
+    <tr>
+        <th>ID</th><th>Name</th><th>Email</th><th>Role</th>
+    </tr>
+    {% for s in staff %}
+    <tr>
+        <td>{{ s.id }}</td>
+        <td>{{ s.name }}</td>
+        <td>{{ s.email }}</td>
+        <td>{{ s.role }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4">No staff found.</td></tr>
+    {% endfor %}
+</table>
+{% endblock %}
