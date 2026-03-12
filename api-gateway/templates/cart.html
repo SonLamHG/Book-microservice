@@ -1,17 +1,17 @@
 {% extends 'base.html' %}
 {% block title %}Cart{% endblock %}
 {% block content %}
-<h1>Cart for Customer #{{ customer_id }}</h1>
+<h1>Cart for {{ customer_name|default:"Customer" }} (#{{ customer_id }})</h1>
 
 <div class="card">
     <h2>Add Book to Cart</h2>
-    <form method="post" action="/cart/add/" style="display: flex; gap: 10px; align-items: end;">
+    <form method="post" action="/cart/add/" class="form-inline">
         <input type="hidden" name="customer_id" value="{{ customer_id }}">
-        <div class="form-group" style="margin: 0;">
+        <div class="form-group">
             <label>Book ID</label>
             <input type="number" name="book_id" required style="width: 100px;">
         </div>
-        <div class="form-group" style="margin: 0;">
+        <div class="form-group">
             <label>Qty</label>
             <input type="number" name="quantity" value="1" min="1" style="width: 70px;">
         </div>
@@ -21,18 +21,43 @@
 
 <table>
     <tr>
-        <th>Book ID</th><th>Title</th><th>Price</th><th>Quantity</th>
+        <th>Book ID</th><th>Title</th><th>Price</th><th>Quantity</th><th>Subtotal</th><th>Actions</th>
     </tr>
     {% for item in items %}
     <tr>
         <td>{{ item.book_id }}</td>
         <td>{% if item.book %}{{ item.book.title }}{% else %}N/A{% endif %}</td>
         <td>{% if item.book %}${{ item.book.price }}{% else %}N/A{% endif %}</td>
-        <td>{{ item.quantity }}</td>
+        <td>
+            <form method="post" action="/cart/item/{{ item.id }}/update/" class="form-inline">
+                <input type="hidden" name="customer_id" value="{{ customer_id }}">
+                <input type="number" name="quantity" value="{{ item.quantity }}" min="1" style="width: 60px; padding: 4px;">
+                <button type="submit" class="btn btn-sm btn-warning">Update</button>
+            </form>
+        </td>
+        <td>
+            {% if item.book %}
+                ${{ item.book.price|floatformat:2 }}
+            {% else %}
+                N/A
+            {% endif %}
+        </td>
+        <td>
+            <form method="post" action="/cart/item/{{ item.id }}/remove/" style="display:inline;">
+                <input type="hidden" name="customer_id" value="{{ customer_id }}">
+                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+            </form>
+        </td>
     </tr>
     {% empty %}
-    <tr><td colspan="4">Cart is empty.</td></tr>
+    <tr><td colspan="6">Cart is empty.</td></tr>
     {% endfor %}
+    {% if items %}
+    <tr class="total-row">
+        <td colspan="4" style="text-align: right;">Total:</td>
+        <td colspan="2">${{ cart_total }}</td>
+    </tr>
+    {% endif %}
 </table>
 
 {% if items %}
@@ -59,10 +84,14 @@
                 <option value="EXPRESS">Express</option>
             </select>
         </div>
-        <button type="submit" class="btn btn-success">Place Order</button>
+        <button type="submit" class="btn btn-success">Place Order (${{ cart_total }})</button>
     </form>
 </div>
 {% endif %}
 
-<a href="/customers/" class="btn">Back to Customers</a>
+<p style="margin-top: 15px;">
+    <a href="/orders/{{ customer_id }}/" class="btn">View Orders</a>
+    <a href="/books/" class="btn">Browse Books</a>
+    <a href="/customers/" class="btn">Back to Customers</a>
+</p>
 {% endblock %}

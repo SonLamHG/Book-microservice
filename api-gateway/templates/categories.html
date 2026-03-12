@@ -7,16 +7,24 @@
 </p>
 <table>
     <tr>
-        <th>ID</th><th>Name</th><th>Description</th>
+        <th>ID</th><th>Name</th><th>Description</th><th>Actions</th>
     </tr>
     {% for c in categories %}
     <tr>
         <td>{{ c.id }}</td>
         <td>{{ c.name }}</td>
         <td>{{ c.description }}</td>
+        <td>
+            <div class="actions">
+                <a href="/categories/{{ c.id }}/edit/" class="btn btn-sm btn-warning">Edit</a>
+                <form method="post" action="/categories/{{ c.id }}/delete/" style="display: inline;">
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this category?')">Delete</button>
+                </form>
+            </div>
+        </td>
     </tr>
     {% empty %}
-    <tr><td colspan="3">No categories found.</td></tr>
+    <tr><td colspan="4">No categories found.</td></tr>
     {% endfor %}
 </table>
 {% endblock %}

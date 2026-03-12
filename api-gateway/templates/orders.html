@@ -1,24 +1,50 @@
 {% extends 'base.html' %}
 {% block title %}Orders{% endblock %}
 {% block content %}
-<h1>Orders for Customer #{{ customer_id }}</h1>
-<table>
-    <tr>
-        <th>Order ID</th><th>Total</th><th>Status</th><th>Payment</th><th>Shipping</th><th>Date</th>
-    </tr>
-    {% for order in orders %}
-    <tr>
-        <td>#{{ order.id }}</td>
-        <td>${{ order.total_amount }}</td>
-        <td>{{ order.status }}</td>
-        <td>{{ order.payment_method }}</td>
-        <td>{{ order.shipping_method }}</td>
-        <td>{{ order.created_at }}</td>
-    </tr>
-    {% empty %}
-    <tr><td colspan="6">No orders found.</td></tr>
-    {% endfor %}
-</table>
-<a href="/cart/{{ customer_id }}/" class="btn">Back to Cart</a>
-<a href="/customers/" class="btn">Back to Customers</a>
+<h1>Orders for {{ customer_name|default:"Customer" }} (#{{ customer_id }})</h1>
+
+{% for order in orders %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h2 style="margin: 0;">Order #{{ order.id }}</h2>
+        <span class="btn btn-sm
+            {% if order.status == 'COMPLETED' %}btn-success
+            {% elif order.status == 'CANCELLED' %}btn-danger
+            {% elif order.status == 'CONFIRMED' %}btn-warning
+            {% else %}{% endif %}"
+            style="cursor: default;">
+            {{ order.status }}
+        </span>
+    </div>
+    <table style="margin-bottom: 10px;">
+        <tr>
+            <th>Book</th><th>Price</th><th>Qty</th><th>Subtotal</th>
+        </tr>
+        {% for item in order.items %}
+        <tr>
+            <td>{% if item.book %}{{ item.book.title }}{% else %}Book #{{ item.book_id }}{% endif %}</td>
+            <td>${{ item.price }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>${{ item.price|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="total-row">
+            <td colspan="3" style="text-align: right;">Total:</td>
+            <td>${{ order.total_amount }}</td>
+        </tr>
+    </table>
+    <small style="color: #999;">
+        Payment: {{ order.payment_method }} |
+        Shipping: {{ order.shipping_method }} |
+        Date: {{ order.created_at }}
+    </small>
+</div>
+{% empty %}
+<div class="alert alert-info">No orders found.</div>
+{% endfor %}
+
+<p style="margin-top: 15px;">
+    <a href="/cart/{{ customer_id }}/" class="btn">Back to Cart</a>
+    <a href="/customers/" class="btn">Back to Customers</a>
+</p>
 {% endblock %}

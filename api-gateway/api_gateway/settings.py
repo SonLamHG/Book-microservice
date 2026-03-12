@@ -39,6 +39,7 @@ TEMPLATES = [
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
+                'gateway.context_processors.flash_messages',
             ],
         },
     },

@@ -7,7 +7,7 @@
 </p>
 <table>
     <tr>
-        <th>ID</th><th>Name</th><th>Email</th><th>Role</th>
+        <th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Actions</th>
     </tr>
     {% for s in staff %}
     <tr>
@@ -15,9 +15,17 @@
         <td>{{ s.name }}</td>
         <td>{{ s.email }}</td>
         <td>{{ s.role }}</td>
+        <td>
+            <div class="actions">
+                <a href="/staff/{{ s.id }}/edit/" class="btn btn-sm btn-warning">Edit</a>
+                <form method="post" action="/staff/{{ s.id }}/delete/" style="display: inline;">
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this staff member?')">Delete</button>
+                </form>
+            </div>
+        </td>
     </tr>
     {% empty %}
-    <tr><td colspan="4">No staff found.</td></tr>
+    <tr><td colspan="5">No staff found.</td></tr>
     {% endfor %}
 </table>
 {% endblock %}

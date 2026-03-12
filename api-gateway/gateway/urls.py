@@ -12,6 +12,8 @@ urlpatterns = [
     # Cart
     path('cart/<int:customer_id>/', views.view_cart, name='view_cart'),
     path('cart/add/', views.add_to_cart, name='add_to_cart'),
+    path('cart/item/<int:item_id>/remove/', views.remove_cart_item, name='remove_cart_item'),
+    path('cart/item/<int:item_id>/update/', views.update_cart_item, name='update_cart_item'),
     # Orders
     path('orders/<int:customer_id>/', views.order_list, name='order_list'),
     path('orders/create/', views.create_order, name='create_order'),
@@ -23,12 +25,18 @@ urlpatterns = [
     # Staff
     path('staff/', views.staff_list, name='staff_list'),
     path('staff/create/', views.staff_create, name='staff_create'),
+    path('staff/<int:pk>/edit/', views.staff_edit, name='staff_edit'),
+    path('staff/<int:pk>/delete/', views.staff_delete, name='staff_delete'),
     # Managers
     path('managers/', views.manager_list, name='manager_list'),
     path('managers/create/', views.manager_create, name='manager_create'),
+    path('managers/<int:pk>/edit/', views.manager_edit, name='manager_edit'),
+    path('managers/<int:pk>/delete/', views.manager_delete, name='manager_delete'),
     # Categories
     path('categories/', views.category_list, name='category_list'),
     path('categories/create/', views.category_create, name='category_create'),
+    path('categories/<int:pk>/edit/', views.category_edit, name='category_edit'),
+    path('categories/<int:pk>/delete/', views.category_delete, name='category_delete'),
     # Auth
     path('auth/login/', views.auth_login, name='auth_login'),
     path('auth/register/', views.auth_register, name='auth_register'),

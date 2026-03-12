@@ -1,12 +1,22 @@
 {% extends 'base.html' %}
 {% block title %}Reviews{% endblock %}
 {% block content %}
-<h1>Reviews for Book #{{ book_id }}</h1>
+<h1>Reviews for {% if book_data %}{{ book_data.title }}{% else %}Book #{{ book_id }}{% endif %}</h1>
 
-{% if review_data.average_rating %}
-<div class="alert alert-info">
-    Average Rating: <strong>{{ review_data.average_rating }}/5</strong>
-    ({{ review_data.total_reviews }} reviews)
+{% if book_data %}
+<div class="card" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+        <strong>{{ book_data.title }}</strong> by {{ book_data.author }}<br>
+        <span style="color: #27ae60; font-size: 1.2em;">${{ book_data.price }}</span>
+    </div>
+    {% if review_data.average_rating %}
+    <div style="text-align: center;">
+        <div style="font-size: 2em; color: #f39c12;">{{ review_data.average_rating }}/5</div>
+        <small>{{ review_data.total_reviews }} reviews</small>
+    </div>
+    {% else %}
+    <div style="color: #999;">No reviews yet</div>
+    {% endif %}
 </div>
 {% endif %}
 
@@ -16,14 +26,14 @@
         <input type="hidden" name="book_id" value="{{ book_id }}">
         <div class="form-group">
             <label>Customer ID</label>
-            <input type="number" name="customer_id" required>
+            <input type="number" name="customer_id" required value="{{ default_customer_id }}">
         </div>
         <div class="form-group">
-            <label>Rating (1-5)</label>
+            <label>Rating</label>
             <select name="rating">
                 <option value="5">5 - Excellent</option>
                 <option value="4">4 - Good</option>
-                <option value="3">3 - Average</option>
+                <option value="3" selected>3 - Average</option>
                 <option value="2">2 - Poor</option>
                 <option value="1">1 - Terrible</option>
             </select>
@@ -40,13 +50,15 @@
 <h2>All Reviews</h2>
 {% for review in review_data.reviews %}
 <div class="card">
-    <strong>Customer #{{ review.customer_id }}</strong> -
-    Rating: {{ review.rating }}/5<br>
-    <p style="margin-top: 5px;">{{ review.comment }}</p>
+    <div style="display: flex; justify-content: space-between;">
+        <strong>Customer #{{ review.customer_id }}</strong>
+        <span style="color: #f39c12;">{{ review.rating }}/5</span>
+    </div>
+    {% if review.comment %}<p style="margin-top: 5px;">{{ review.comment }}</p>{% endif %}
     <small style="color: #999;">{{ review.created_at }}</small>
 </div>
 {% endfor %}
 {% endif %}
 
-<a href="/books/" class="btn">Back to Books</a>
+<a href="/books/" class="btn" style="margin-top: 10px;">Back to Books</a>
 {% endblock %}
