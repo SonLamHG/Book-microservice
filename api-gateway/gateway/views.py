@@ -38,6 +38,16 @@ def _fetch_books():
     return _fetch_json(f"{BOOK_SERVICE_URL}/books/")
 
 
+def _paginate(items, request, per_page=10):
+    if not isinstance(items, list):
+        return items, 1, 1
+    page = int(request.GET.get('page', 1))
+    total_pages = max(1, (len(items) + per_page - 1) // per_page)
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * per_page
+    return items[start:start + per_page], page, total_pages
+
+
 # ---- Home (Dashboard) ----
 
 def home(request):
@@ -67,10 +77,13 @@ def book_list(request):
                  search.lower() in b.get('title', '').lower() or
                  search.lower() in b.get('author', '').lower() or
                  search.lower() in b.get('isbn', '').lower()]
+    books, page, total_pages = _paginate(books, request)
     return render(request, 'books.html', {
         'books': books,
         'customers': customers,
         'search': search,
+        'page': page,
+        'total_pages': total_pages,
     })
 
 
@@ -96,11 +109,62 @@ def book_create(request):
     return render(request, 'book_form.html')
 
 
+def book_edit(request, pk):
+    if request.method == 'POST':
+        data = {
+            'title': request.POST.get('title'),
+            'author': request.POST.get('author'),
+            'price': request.POST.get('price'),
+            'stock': request.POST.get('stock'),
+            'isbn': request.POST.get('isbn', ''),
+            'description': request.POST.get('description', ''),
+        }
+        try:
+            r = requests.put(f"{BOOK_SERVICE_URL}/books/{pk}/", json=data, timeout=5)
+            if r.status_code == 200:
+                _flash(request, 'Book updated!')
+            else:
+                _flash(request, 'Failed to update book.', 'danger')
+        except Exception:
+            _flash(request, 'Book service unavailable.', 'danger')
+        return redirect('book_list')
+
+    book_data = None
+    try:
+        r = requests.get(f"{BOOK_SERVICE_URL}/books/{pk}/", timeout=5)
+        if r.status_code == 200:
+            book_data = r.json()
+    except Exception:
+        pass
+    if not book_data:
+        _flash(request, 'Book not found.', 'danger')
+        return redirect('book_list')
+    return render(request, 'book_form.html', {'edit': True, 'item': book_data})
+
+
+def book_delete(request, pk):
+    if request.method == 'POST':
+        try:
+            r = requests.delete(f"{BOOK_SERVICE_URL}/books/{pk}/", timeout=5)
+            if r.status_code == 204:
+                _flash(request, 'Book deleted.')
+            else:
+                _flash(request, 'Failed to delete book.', 'danger')
+        except Exception:
+            _flash(request, 'Book service unavailable.', 'danger')
+    return redirect('book_list')
+
+
 # ---- Customer ----
 
 def customer_list(request):
     customers = _fetch_customers()
-    return render(request, 'customers.html', {'customers': customers})
+    customers, page, total_pages = _paginate(customers, request)
+    return render(request, 'customers.html', {
+        'customers': customers,
+        'page': page,
+        'total_pages': total_pages,
+    })
 
 
 def customer_register(request):
@@ -123,6 +187,50 @@ def customer_register(request):
     return render(request, 'customer_form.html')
 
 
+def customer_edit(request, pk):
+    if request.method == 'POST':
+        data = {
+            'name': request.POST.get('name'),
+            'email': request.POST.get('email'),
+            'phone': request.POST.get('phone', ''),
+            'address': request.POST.get('address', ''),
+        }
+        try:
+            r = requests.put(f"{CUSTOMER_SERVICE_URL}/customers/{pk}/", json=data, timeout=5)
+            if r.status_code == 200:
+                _flash(request, 'Customer updated!')
+            else:
+                _flash(request, 'Failed to update customer.', 'danger')
+        except Exception:
+            _flash(request, 'Customer service unavailable.', 'danger')
+        return redirect('customer_list')
+
+    item = None
+    try:
+        r = requests.get(f"{CUSTOMER_SERVICE_URL}/customers/{pk}/", timeout=5)
+        if r.status_code == 200:
+            item = r.json()
+    except Exception:
+        pass
+    if not item:
+        _flash(request, 'Customer not found.', 'danger')
+        return redirect('customer_list')
+    return render(request, 'customer_form.html', {'edit': True, 'item': item})
+
+
+def customer_delete(request, pk):
+    if request.method == 'POST':
+        try:
+            r = requests.delete(f"{CUSTOMER_SERVICE_URL}/customers/{pk}/", timeout=5)
+            if r.status_code == 204:
+                _flash(request, 'Customer deleted.')
+            else:
+                _flash(request, 'Failed to delete customer.', 'danger')
+        except Exception:
+            _flash(request, 'Customer service unavailable.', 'danger')
+    return redirect('customer_list')
+
+
 # ---- Cart ----
 
 def view_cart(request, customer_id):
@@ -138,9 +246,16 @@ def view_cart(request, customer_id):
             br = requests.get(f"{BOOK_SERVICE_URL}/books/{item['book_id']}/", timeout=5)
             if br.status_code == 200:
                 item['book'] = br.json()
-                cart_total += float(item['book'].get('price', 0)) * item.get('quantity', 0)
+                price = float(item['book'].get('price', 0))
+                qty = item.get('quantity', 0)
+                item['subtotal'] = price * qty
+                cart_total += item['subtotal']
+            else:
+                item['book'] = None
+                item['subtotal'] = 0
         except Exception:
             item['book'] = None
+            item['subtotal'] = 0
 
     customer_name = ''
     try:
@@ -150,11 +265,14 @@ def view_cart(request, customer_id):
     except Exception:
         pass
 
+    books = _fetch_books()
+
     return render(request, 'cart.html', {
         'items': items,
         'customer_id': customer_id,
         'customer_name': customer_name,
         'cart_total': f"{cart_total:.2f}",
+        'books': books,
     })
 
 
@@ -251,10 +369,14 @@ def order_list(request, customer_id):
     except Exception:
         pass
 
+    orders, page, total_pages = _paginate(orders, request, per_page=5)
+
     return render(request, 'orders.html', {
         'orders': orders,
         'customer_id': customer_id,
         'customer_name': customer_name,
+        'page': page,
+        'total_pages': total_pages,
     })
 
 
@@ -567,6 +689,20 @@ def auth_login(request):
                 result = r.json()
                 request.session['jwt_token'] = result['token']
                 request.session['user_data'] = result['user']
+
+                # Look up linked customer profile
+                if result['user'].get('role') == 'CUSTOMER':
+                    try:
+                        customers = requests.get(
+                            f"{CUSTOMER_SERVICE_URL}/customers/", timeout=5
+                        ).json()
+                        for c in customers:
+                            if c.get('auth_user_id') == result['user']['id'] or c.get('email') == result['user'].get('email'):
+                                request.session['customer_id'] = c['id']
+                                break
+                    except Exception:
+                        pass
+
                 _flash(request, f'Welcome back, {result["user"]["username"]}!')
                 return redirect('home')
             else:
@@ -594,11 +730,17 @@ def auth_register(request):
                 # Auto-create customer profile if role is CUSTOMER
                 if data['role'] == 'CUSTOMER':
                     try:
-                        requests.post(
+                        cr = requests.post(
                             f"{CUSTOMER_SERVICE_URL}/customers/",
-                            json={'name': data['username'], 'email': data['email']},
+                            json={
+                                'name': data['username'],
+                                'email': data['email'],
+                                'auth_user_id': result['user']['id'],
+                            },
                             timeout=5,
                         )
+                        if cr.status_code == 201:
+                            request.session['customer_id'] = cr.json()['id']
                     except Exception:
                         pass
 

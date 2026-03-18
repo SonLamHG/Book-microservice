@@ -6,9 +6,13 @@ urlpatterns = [
     # Books
     path('books/', views.book_list, name='book_list'),
     path('books/create/', views.book_create, name='book_create'),
+    path('books/<int:pk>/edit/', views.book_edit, name='book_edit'),
+    path('books/<int:pk>/delete/', views.book_delete, name='book_delete'),
     # Customers
     path('customers/', views.customer_list, name='customer_list'),
     path('customers/register/', views.customer_register, name='customer_register'),
+    path('customers/<int:pk>/edit/', views.customer_edit, name='customer_edit'),
+    path('customers/<int:pk>/delete/', views.customer_delete, name='customer_delete'),
     # Cart
     path('cart/<int:customer_id>/', views.view_cart, name='view_cart'),
     path('cart/add/', views.add_to_cart, name='add_to_cart'),

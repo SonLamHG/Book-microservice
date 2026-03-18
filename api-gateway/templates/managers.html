@@ -19,6 +19,7 @@
             <div class="actions">
                 <a href="/managers/{{ m.id }}/edit/" class="btn btn-sm btn-warning">Edit</a>
                 <form method="post" action="/managers/{{ m.id }}/delete/" style="display: inline;">
+                    {% csrf_token %}
                     <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this manager?')">Delete</button>
                 </form>
             </div>

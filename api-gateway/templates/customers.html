@@ -16,13 +16,33 @@
         <td>{{ c.email }}</td>
         <td>{{ c.phone }}</td>
         <td>
-            <a href="/cart/{{ c.id }}/" class="btn">Cart</a>
-            <a href="/orders/{{ c.id }}/" class="btn">Orders</a>
-            <a href="/recommendations/{{ c.id }}/" class="btn btn-success">Recommend</a>
+            <div class="actions">
+                <a href="/cart/{{ c.id }}/" class="btn btn-sm">Cart</a>
+                <a href="/orders/{{ c.id }}/" class="btn btn-sm">Orders</a>
+                <a href="/recommendations/{{ c.id }}/" class="btn btn-sm btn-success">Recommend</a>
+                {% if user_role == 'STAFF' or user_role == 'MANAGER' or user_role == 'ADMIN' %}
+                <a href="/customers/{{ c.id }}/edit/" class="btn btn-sm btn-warning">Edit</a>
+                <form method="post" action="/customers/{{ c.id }}/delete/" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this customer?')">Delete</button>
+                </form>
+                {% endif %}
+            </div>
         </td>
     </tr>
     {% empty %}
     <tr><td colspan="5">No customers found.</td></tr>
     {% endfor %}
 </table>
+{% if total_pages > 1 %}
+<div class="pagination">
+    {% if page > 1 %}
+        <a href="?page={{ page|add:"-1" }}" class="btn btn-sm">Previous</a>
+    {% endif %}
+    <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
+    {% if page < total_pages %}
+        <a href="?page={{ page|add:"1" }}" class="btn btn-sm">Next</a>
+    {% endif %}
+</div>
+{% endif %}
 {% endblock %}

@@ -3,7 +3,11 @@
 {% block content %}
 <h1>Book List</h1>
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+    {% if user_role == 'STAFF' or user_role == 'MANAGER' or user_role == 'ADMIN' %}
     <a href="/books/create/" class="btn btn-success">+ Add New Book</a>
+    {% else %}
+    <span></span>
+    {% endif %}
     <form method="get" class="search-bar" style="margin: 0; max-width: 400px; flex: 1; margin-left: 20px;">
         <input type="text" name="search" value="{{ search }}" placeholder="Search by title, author, ISBN...">
         <button type="submit" class="btn">Search</button>
@@ -24,8 +28,18 @@
         <td>
             <div class="actions">
                 <a href="/reviews/book/{{ book.id }}/" class="btn btn-sm">Reviews</a>
-                {% if customers %}
+                {% if customer_id %}
+                <form method="post" action="/cart/add/" style="display: inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="book_id" value="{{ book.id }}">
+                    <input type="hidden" name="quantity" value="1">
+                    <input type="hidden" name="redirect_to" value="books">
+                    <input type="hidden" name="customer_id" value="{{ customer_id }}">
+                    <button type="submit" class="btn btn-sm btn-success">+ Cart</button>
+                </form>
+                {% elif customers %}
                 <form method="post" action="/cart/add/" style="display: flex; gap: 4px; align-items: center;">
+                    {% csrf_token %}
                     <input type="hidden" name="book_id" value="{{ book.id }}">
                     <input type="hidden" name="quantity" value="1">
                     <input type="hidden" name="redirect_to" value="books">
@@ -38,6 +52,13 @@
                     <button type="submit" class="btn btn-sm btn-success">+ Cart</button>
                 </form>
                 {% endif %}
+                {% if user_role == 'STAFF' or user_role == 'MANAGER' or user_role == 'ADMIN' %}
+                <a href="/books/{{ book.id }}/edit/" class="btn btn-sm btn-warning">Edit</a>
+                <form method="post" action="/books/{{ book.id }}/delete/" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this book?')">Delete</button>
+                </form>
+                {% endif %}
             </div>
         </td>
     </tr>
@@ -45,4 +66,15 @@
     <tr><td colspan="6">No books found.</td></tr>
     {% endfor %}
 </table>
+{% if total_pages > 1 %}
+<div class="pagination">
+    {% if page > 1 %}
+        <a href="?page={{ page|add:"-1" }}{% if search %}&search={{ search }}{% endif %}" class="btn btn-sm">Previous</a>
+    {% endif %}
+    <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
+    {% if page < total_pages %}
+        <a href="?page={{ page|add:"1" }}{% if search %}&search={{ search }}{% endif %}" class="btn btn-sm">Next</a>
+    {% endif %}
+</div>
+{% endif %}
 {% endblock %}

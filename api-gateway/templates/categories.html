@@ -18,6 +18,7 @@
             <div class="actions">
                 <a href="/categories/{{ c.id }}/edit/" class="btn btn-sm btn-warning">Edit</a>
                 <form method="post" action="/categories/{{ c.id }}/delete/" style="display: inline;">
+                    {% csrf_token %}
                     <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this category?')">Delete</button>
                 </form>
             </div>

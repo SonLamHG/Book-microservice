@@ -1,34 +1,35 @@
 {% extends 'base.html' %}
-{% block title %}Add Book{% endblock %}
+{% block title %}{% if edit %}Edit Book{% else %}Add Book{% endif %}{% endblock %}
 {% block content %}
-<h1>Add New Book</h1>
+<h1>{% if edit %}Edit Book{% else %}Add New Book{% endif %}</h1>
 <div class="card">
-    <form method="post" action="/books/create/">
+    <form method="post">
+        {% csrf_token %}
         <div class="form-group">
             <label>Title</label>
-            <input type="text" name="title" required>
+            <input type="text" name="title" required value="{% if item %}{{ item.title }}{% endif %}">
         </div>
         <div class="form-group">
             <label>Author</label>
-            <input type="text" name="author" required>
+            <input type="text" name="author" required value="{% if item %}{{ item.author }}{% endif %}">
         </div>
         <div class="form-group">
             <label>Price</label>
-            <input type="number" name="price" step="0.01" required>
+            <input type="number" name="price" step="0.01" required value="{% if item %}{{ item.price }}{% endif %}">
         </div>
         <div class="form-group">
             <label>Stock</label>
-            <input type="number" name="stock" required>
+            <input type="number" name="stock" required value="{% if item %}{{ item.stock }}{% endif %}">
         </div>
         <div class="form-group">
             <label>ISBN</label>
-            <input type="text" name="isbn">
+            <input type="text" name="isbn" value="{% if item %}{{ item.isbn }}{% endif %}">
         </div>
         <div class="form-group">
             <label>Description</label>
-            <textarea name="description" rows="3"></textarea>
+            <textarea name="description" rows="3">{% if item %}{{ item.description }}{% endif %}</textarea>
         </div>
-        <button type="submit" class="btn btn-success">Create Book</button>
+        <button type="submit" class="btn btn-success">{% if edit %}Update{% else %}Create Book{% endif %}</button>
         <a href="/books/" class="btn">Cancel</a>
     </form>
 </div>

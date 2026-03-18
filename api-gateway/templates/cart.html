@@ -6,10 +6,16 @@
 <div class="card">
     <h2>Add Book to Cart</h2>
     <form method="post" action="/cart/add/" class="form-inline">
+        {% csrf_token %}
         <input type="hidden" name="customer_id" value="{{ customer_id }}">
         <div class="form-group">
-            <label>Book ID</label>
-            <input type="number" name="book_id" required style="width: 100px;">
+            <label>Book</label>
+            <select name="book_id" required style="width: 280px;">
+                <option value="">-- Select a book --</option>
+                {% for book in books %}
+                <option value="{{ book.id }}">{{ book.title }} - ${{ book.price }}</option>
+                {% endfor %}
+            </select>
         </div>
         <div class="form-group">
             <label>Qty</label>
@@ -30,6 +36,7 @@
         <td>{% if item.book %}${{ item.book.price }}{% else %}N/A{% endif %}</td>
         <td>
             <form method="post" action="/cart/item/{{ item.id }}/update/" class="form-inline">
+                {% csrf_token %}
                 <input type="hidden" name="customer_id" value="{{ customer_id }}">
                 <input type="number" name="quantity" value="{{ item.quantity }}" min="1" style="width: 60px; padding: 4px;">
                 <button type="submit" class="btn btn-sm btn-warning">Update</button>
@@ -37,13 +44,14 @@
         </td>
         <td>
             {% if item.book %}
-                ${{ item.book.price|floatformat:2 }}
+                ${{ item.subtotal|floatformat:2 }}
             {% else %}
                 N/A
             {% endif %}
         </td>
         <td>
             <form method="post" action="/cart/item/{{ item.id }}/remove/" style="display:inline;">
+                {% csrf_token %}
                 <input type="hidden" name="customer_id" value="{{ customer_id }}">
                 <button type="submit" class="btn btn-sm btn-danger">Remove</button>
             </form>
@@ -64,6 +72,7 @@
 <div class="card">
     <h2>Place Order</h2>
     <form method="post" action="/orders/create/">
+        {% csrf_token %}
         <input type="hidden" name="customer_id" value="{{ customer_id }}">
         <div class="form-group">
             <label>Shipping Address</label>

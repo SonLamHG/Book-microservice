@@ -16,6 +16,7 @@
         <div class="stat-num">{{ stats.orders }}</div>
         <div class="stat-label">Orders</div>
     </div>
+    {% if user_role == 'STAFF' or user_role == 'MANAGER' or user_role == 'ADMIN' %}
     <div class="stat-card">
         <div class="stat-num">{{ stats.staff }}</div>
         <div class="stat-label">Staff</div>
@@ -24,16 +25,24 @@
         <div class="stat-num">{{ stats.categories }}</div>
         <div class="stat-label">Categories</div>
     </div>
+    {% endif %}
 </div>
 
 <div class="card">
     <h2>Quick Links</h2>
     <p style="margin: 10px 0;">
-        <a href="/books/" class="btn">Manage Books</a>
-        <a href="/customers/" class="btn btn-success">Manage Customers</a>
-        <a href="/categories/" class="btn">Categories</a>
-        <a href="/staff/" class="btn">Staff</a>
-        <a href="/managers/" class="btn">Managers</a>
+        <a href="/books/" class="btn">Browse Books</a>
+        {% if customer_id %}
+            <a href="/cart/{{ customer_id }}/" class="btn btn-success">My Cart</a>
+            <a href="/orders/{{ customer_id }}/" class="btn">My Orders</a>
+            <a href="/recommendations/{{ customer_id }}/" class="btn">Recommendations</a>
+        {% endif %}
+        {% if user_role == 'STAFF' or user_role == 'MANAGER' or user_role == 'ADMIN' %}
+            <a href="/customers/" class="btn btn-success">Manage Customers</a>
+            <a href="/categories/" class="btn">Categories</a>
+            <a href="/staff/" class="btn">Staff</a>
+            <a href="/managers/" class="btn">Managers</a>
+        {% endif %}
     </p>
 </div>
 {% endblock %}

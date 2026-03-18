@@ -18,6 +18,7 @@ MIDDLEWARE = [
     'gateway.middleware.RateLimitMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
     'gateway.middleware.JWTAuthMiddleware',
 ]
 

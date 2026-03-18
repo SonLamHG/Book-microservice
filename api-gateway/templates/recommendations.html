@@ -17,6 +17,7 @@
         <td>
             <div class="actions">
                 <form method="post" action="/cart/add/" style="display: inline;">
+                    {% csrf_token %}
                     <input type="hidden" name="customer_id" value="{{ customer_id }}">
                     <input type="hidden" name="book_id" value="{{ book.id }}">
                     <input type="hidden" name="quantity" value="1">

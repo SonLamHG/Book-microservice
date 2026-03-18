@@ -43,6 +43,18 @@
 <div class="alert alert-info">No orders found.</div>
 {% endfor %}
 
+{% if total_pages > 1 %}
+<div class="pagination">
+    {% if page > 1 %}
+        <a href="?page={{ page|add:"-1" }}" class="btn btn-sm">Previous</a>
+    {% endif %}
+    <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
+    {% if page < total_pages %}
+        <a href="?page={{ page|add:"1" }}" class="btn btn-sm">Next</a>
+    {% endif %}
+</div>
+{% endif %}
+
 <p style="margin-top: 15px;">
     <a href="/cart/{{ customer_id }}/" class="btn">Back to Cart</a>
     <a href="/customers/" class="btn">Back to Customers</a>
