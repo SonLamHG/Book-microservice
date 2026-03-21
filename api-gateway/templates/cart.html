@@ -27,7 +27,12 @@
 
 <table>
     <tr>
-        <th>Book ID</th><th>Title</th><th>Price</th><th>Quantity</th><th>Subtotal</th><th>Actions</th>
+        <th>Book ID</th>
+        <th>Title</th>
+        <th>Price</th>
+        <th>Quantity</th>
+        <th>Subtotal</th>
+        <th>Actions</th>
     </tr>
     {% for item in items %}
     <tr>
@@ -38,15 +43,16 @@
             <form method="post" action="/cart/item/{{ item.id }}/update/" class="form-inline">
                 {% csrf_token %}
                 <input type="hidden" name="customer_id" value="{{ customer_id }}">
-                <input type="number" name="quantity" value="{{ item.quantity }}" min="1" style="width: 60px; padding: 4px;">
+                <input type="number" name="quantity" value="{{ item.quantity }}" min="1"
+                    style="width: 60px; padding: 4px;">
                 <button type="submit" class="btn btn-sm btn-warning">Update</button>
             </form>
         </td>
         <td>
             {% if item.book %}
-                ${{ item.subtotal|floatformat:2 }}
+            ${{ item.subtotal|floatformat:2 }}
             {% else %}
-                N/A
+            N/A
             {% endif %}
         </td>
         <td>
@@ -58,7 +64,9 @@
         </td>
     </tr>
     {% empty %}
-    <tr><td colspan="6">Cart is empty.</td></tr>
+    <tr>
+        <td colspan="6">Cart is empty.</td>
+    </tr>
     {% endfor %}
     {% if items %}
     <tr class="total-row">
@@ -100,7 +108,5 @@
 
 <p style="margin-top: 15px;">
     <a href="/orders/{{ customer_id }}/" class="btn">View Orders</a>
-    <a href="/books/" class="btn">Browse Books</a>
-    <a href="/customers/" class="btn">Back to Customers</a>
 </p>
 {% endblock %}

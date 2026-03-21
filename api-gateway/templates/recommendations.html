@@ -6,7 +6,11 @@
 {% if data.recommendations %}
 <table>
     <tr>
-        <th>Title</th><th>Author</th><th>Price</th><th>Avg Rating</th><th>Actions</th>
+        <th>Title</th>
+        <th>Author</th>
+        <th>Price</th>
+        <th>Avg Rating</th>
+        <th>Actions</th>
     </tr>
     {% for book in data.recommendations %}
     <tr>
@@ -36,6 +40,5 @@
 <p style="margin-top: 15px;">
     <a href="/cart/{{ customer_id }}/" class="btn">View Cart</a>
     <a href="/books/" class="btn">Browse Books</a>
-    <a href="/customers/" class="btn">Back to Customers</a>
 </p>
 {% endblock %}

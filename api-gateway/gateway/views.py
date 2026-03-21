@@ -743,6 +743,34 @@ def auth_register(request):
                             request.session['customer_id'] = cr.json()['id']
                     except Exception:
                         pass
+                # Auto-create staff profile if role is STAFF
+                elif data['role'] == 'STAFF':
+                    try:
+                        sr = requests.post(
+                            f"{STAFF_SERVICE_URL}/staff/",
+                            json={
+                                'name': data['username'],
+                                'email': data['email'],
+                                'role': data['role'],
+                            },
+                            timeout=5,
+                        )
+                    except Exception:
+                        pass
+                # Auto-create manager profile if role is MANAGER or ADMIN
+                elif data['role'] in ['MANAGER', 'ADMIN']:
+                    try:
+                        mr = requests.post(
+                            f"{MANAGER_SERVICE_URL}/managers/",
+                            json={
+                                'name': data['username'],
+                                'email': data['email'],
+                                'department': 'General',
+                            },
+                            timeout=5,
+                        )
+                    except Exception:
+                        pass
 
                 _flash(request, f'Welcome, {data["username"]}! Account created.')
                 return redirect('home')
@@ -757,6 +785,49 @@ def auth_register(request):
 def auth_logout(request):
     request.session.flush()
     return redirect('auth_login')
+
+
+def auth_change_password(request):
+    if request.method == 'POST':
+        old_password = request.POST.get('old_password')
+        new_password = request.POST.get('new_password')
+        confirm_password = request.POST.get('confirm_password')
+
+        if not all([old_password, new_password, confirm_password]):
+            _flash(request, 'Please fill in all fields.', 'danger')
+            return render(request, 'change_password.html')
+
+        if new_password != confirm_password:
+            _flash(request, 'New passwords do not match.', 'danger')
+            return render(request, 'change_password.html')
+
+        user_id = request.session.get('user_data', {}).get('id')
+        if not user_id:
+            _flash(request, 'User session not found.', 'danger')
+            return redirect('auth_login')
+
+        data = {
+            'user_id': user_id,
+            'old_password': old_password,
+            'new_password': new_password,
+        }
+        
+        try:
+            r = requests.put(f"{AUTH_SERVICE_URL}/auth/change-password/", json=data, timeout=5)
+            if r.status_code == 200:
+                _flash(request, 'Password changed successfully! Please log in again.')
+                request.session.flush()
+                return redirect('auth_login')
+            else:
+                try:
+                    error = r.json().get('error', 'Failed to change password')
+                except Exception:
+                    error = 'Failed to change password'
+                _flash(request, error, 'danger')
+        except Exception:
+            _flash(request, 'Auth service unavailable.', 'danger')
+
+    return render(request, 'change_password.html')
 
 
 def health_check(request):

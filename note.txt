@@ -1,0 +1,26 @@
+# Lỗi
+1. Đang lỗi nghiệp vụ
+- Staff không được phép thêm Staff hay Manager khác.
+- Sau khi docker compose down --> Sẽ mất hết dữ liệu (do thành không lưu)
+
+2. Khi register 
++ mọi data sẽ được lưu vào bảng app_user của auth-service db.
++ Vậy nên khi ở tab Manager/Staff, sẽ hiện ra No Manager/Staff:
+    + Customer hoạt động đúng.
+    Nghĩa là data sẽ được lưu vào Auth Service để phục vụ auth những lần sau 
+    Nhưng sau đó, AUth service có gọi đến service khác như customer (Cần kiểm chứng), để lưu data vào db của Customer Service 
+    Và hiện giờ Manager/Staff service chưa được inject data vào DB như của Auth Service
++ Database ở Auth sẽ không lưu vào database ở các service khác
+    + bằng chứng là khi manager xóa customer
+
+# Cần cải thiện
+1. Apply thêm JWT cho bảo mật (tìm hiểu thêm)
+2. Apply SAGA vào dự án
+[3] Provide load testing results 
+[3] provide fault simulation
+
+#Câu lệnh tương tác với Docker
+docker compose build --> Build các image docker
+docker compose build --no-cache --> Build các image docker và xóa hết mọi cache docker đã chạy trước đó
+docker compose up -d --> Bật các container chạy dưới nền
+docker compose down
