@@ -79,6 +79,28 @@ class UserList(APIView):
         return Response(serializer.data)
 
 
+class ChangePassword(APIView):
+    def put(self, request):
+        user_id = request.data.get('user_id')
+        old_password = request.data.get('old_password')
+        new_password = request.data.get('new_password')
+
+        if not all([user_id, old_password, new_password]):
+            return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not user.check_password(old_password):
+            return Response({'error': 'Incorrect old password'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save()
+        return Response({'message': 'Password changed successfully'}, status=status.HTTP_200_OK)
+
+
 def health_check(request):
     from django.http import JsonResponse
     return JsonResponse({'status': 'healthy', 'service': 'auth-service'})
