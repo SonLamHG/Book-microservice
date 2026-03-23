@@ -4,24 +4,12 @@ from rest_framework import status
 from .models import Order, OrderItem, SagaLog
 from .serializers import OrderSerializer
 import requests
+from .messaging import publish_event
 
 CART_SERVICE_URL = "http://cart-service:8000"
 BOOK_SERVICE_URL = "http://book-service:8000"
 PAY_SERVICE_URL = "http://pay-service:8000"
 SHIP_SERVICE_URL = "http://ship-service:8000"
-
-
-def publish_event(event_type, data):
-    try:
-        import pika
-        import json
-        connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq', connection_attempts=3, retry_delay=1))
-        channel = connection.channel()
-        channel.exchange_declare(exchange='bookstore', exchange_type='topic', durable=True)
-        channel.basic_publish(exchange='bookstore', routing_key=event_type, body=json.dumps(data))
-        connection.close()
-    except Exception:
-        pass
 
 
 def log_saga_step(order, step, step_status, details=''):

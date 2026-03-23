@@ -20,6 +20,7 @@ services:
       - customer_data:/app/data
     depends_on:
       - cart-service
+      - rabbitmq
 
   staff-service:
     build: ./staff-service
@@ -27,6 +28,8 @@ services:
       - "8004:8000"
     volumes:
       - staff_data:/app/data
+    depends_on:
+      - rabbitmq
 
   manager-service:
     build: ./manager-service
@@ -34,6 +37,8 @@ services:
       - "8005:8000"
     volumes:
       - manager_data:/app/data
+    depends_on:
+      - rabbitmq
 
   catalog-service:
     build: ./catalog-service
@@ -57,6 +62,7 @@ services:
       - cart_data:/app/data
     depends_on:
       - book-service
+      - rabbitmq
 
   order-service:
     build: ./order-service
@@ -112,6 +118,8 @@ services:
       - "8012:8000"
     volumes:
       - auth_data:/app/data
+    depends_on:
+      - rabbitmq
 
   api-gateway:
     build: ./api-gateway

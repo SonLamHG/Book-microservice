@@ -3,19 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Payment
 from .serializers import PaymentSerializer
-
-
-def publish_event(event_type, data):
-    try:
-        import pika
-        import json
-        connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq', connection_attempts=3, retry_delay=1))
-        channel = connection.channel()
-        channel.exchange_declare(exchange='bookstore', exchange_type='topic', durable=True)
-        channel.basic_publish(exchange='bookstore', routing_key=event_type, body=json.dumps(data))
-        connection.close()
-    except Exception:
-        pass
+from .messaging import publish_event
 
 
 class PaymentListCreate(APIView):

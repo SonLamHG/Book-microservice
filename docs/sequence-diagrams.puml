@@ -49,7 +49,19 @@ alt role == "CUSTOMER"
 
     cust --> gw : 201 {customer_id, name, email}
     deactivate cust
+else role == "STAFF"
+    gw -> cust : POST /staff/\n{name, email, auth_user_id}
+    note right : Calls staff-service
+else role == "MANAGER"
+    gw -> cust : POST /managers/\n{name, email, auth_user_id}
+    note right : Calls manager-service
 end
+
+note over auth
+  Auth Service also publishes
+  user.created.{role} event to RabbitMQ
+  for async profile creation (event-driven path)
+end note
 
 gw --> user : Redirect to Dashboard\n(authenticated session)
 deactivate gw
@@ -434,24 +446,19 @@ deactivate pay
 gw --> staff : Show payment updated
 deactivate gw
 
-== Update Order Status ==
+== Auto Update Order Status (Event-Driven) ==
 
-staff -> gw : PUT /orders/{order_id}/\n{status: "PAID"}
-activate gw
-
-gw -> order : PUT /orders/{order_id}/\n{status: "PAID"}
+mq -> order : Consume payment.completed\n{payment_id, order_id}
 activate order
-
-order -> orderdb : UPDATE Order\nSET status = PAID
+order -> orderdb : UPDATE Order\nSET status = PAID\n(if status in CONFIRMED/PENDING)
 orderdb --> order : Updated
-
-order -> mq : Publish event\nexchange: "bookstore"\nrouting_key: "order.status_changed"\n{order_id, status: "PAID"}
-
-order --> gw : 200 {order_id, status: "PAID"}
 deactivate order
 
-gw --> staff : Show order status updated
-deactivate gw
+note over pay, order
+  Order status is automatically updated to PAID
+  when payment.completed event is consumed.
+  No manual status update needed.
+end note
 
 note over order
   Order Status Flow:
@@ -496,20 +503,18 @@ deactivate ship
 gw --> staff : Show shipment updated
 deactivate gw
 
-== Update Order to SHIPPING ==
+== Auto Update Order to SHIPPING (Event-Driven) ==
 
-staff -> gw : PUT /orders/{order_id}/\n{status: "SHIPPING"}
-activate gw
-
-gw -> order : PUT /orders/{order_id}/\n{status: "SHIPPING"}
+mq -> order : Consume shipment.shipped\n{shipment_id, order_id}
 activate order
-order -> orderdb : UPDATE Order SET status = SHIPPING
-order -> mq : Publish "order.status_changed"
-order --> gw : 200 {status: "SHIPPING"}
+order -> orderdb : UPDATE Order\nSET status = SHIPPING\n(if status in CONFIRMED/PAID)
+orderdb --> order : Updated
 deactivate order
 
-gw --> staff : Order status updated
-deactivate gw
+note over ship, order
+  Order status is automatically updated to SHIPPING
+  when shipment.shipped event is consumed.
+end note
 
 == Delivery Confirmation ==
 
@@ -803,10 +808,20 @@ order -> book : Get book prices
 order -> pay : Reserve/Process payment
 order -> ship : Reserve/Ship
 
-== Events ==
+== Events (Published) ==
+auth -> mq : user.created.{role}
+cust -> mq : customer.created
 order -> mq : order.created\norder.status_changed
 pay -> mq : payment.completed
 ship -> mq : shipment.shipped
+
+== Events (Consumed) ==
+mq -> cust : user.created.customer\n(create Customer profile)
+mq -> staff : user.created.staff\n(create Staff profile)
+mq -> mgr : user.created.manager\n(create Manager profile)
+mq -> cart : customer.created\n(auto-create Cart)
+mq -> order : payment.completed\n(Order → PAID)
+mq -> order : shipment.shipped\n(Order → SHIPPING)
 
 == Analytics ==
 gw -> review : Reviews & ratings
@@ -817,5 +832,120 @@ rec -> book : Book details
 == Management ==
 gw -> staff : Staff CRUD
 gw -> mgr : Manager CRUD
+
+@enduml
+
+
+@startuml 12_RBAC_Access_Control
+title Sequence Diagram - RBAC Access Control Flow
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 10
+
+actor "User" as user
+participant "API Gateway\n:8000" as gw
+participant "Auth Service\n:8012" as auth
+
+user -> gw : GET /staff/create/ (with session cookie)
+activate gw
+
+gw -> gw : JWTAuthMiddleware\nExtract token from session
+
+gw -> auth : POST /auth/verify/\n{token}
+activate auth
+auth --> gw : 200 {valid: true, role: "CUSTOMER"}
+deactivate auth
+
+gw -> gw : RBAC Check\npath=/staff/create/\nrequired_roles=[MANAGER, ADMIN]\nuser_role=CUSTOMER
+
+alt User role in allowed roles
+    gw -> gw : Proceed to view
+    gw --> user : 200 Render page
+else User role NOT in allowed roles
+    gw --> user : 403 Forbidden page
+end
+deactivate gw
+
+note over gw
+  RBAC Permission Matrix:
+  Books CRUD: STAFF+
+  Customers delete: MANAGER+
+  Staff create/edit: MANAGER+
+  Staff delete: ADMIN only
+  Managers CRUD: ADMIN only
+end note
+
+@enduml
+
+
+@startuml 13_Event_Driven_Registration
+title Sequence Diagram - Event-Driven User Registration
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 10
+
+actor "User" as user
+participant "API Gateway\n:8000" as gw
+participant "Auth Service\n:8012" as auth
+queue "RabbitMQ\n(bookstore exchange)" as mq
+participant "Customer Service\n:8001" as cust
+participant "Cart Service\n:8003" as cart
+database "Customer DB" as custdb
+database "Cart DB" as cartdb
+
+user -> gw : POST /auth/register/\n{username, email, password, role: CUSTOMER}
+activate gw
+
+gw -> auth : POST /auth/register/
+activate auth
+auth -> auth : Create User, generate JWT
+
+auth -> mq : Publish user.created.customer\n{user_id, username, email, role}
+
+auth --> gw : 201 {token, user}
+deactivate auth
+
+gw -> gw : Store JWT in session
+
+note over gw
+  Gateway also makes synchronous
+  HTTP calls to create profile
+  (kept as fallback)
+end note
+
+gw --> user : Redirect to Dashboard
+deactivate gw
+
+== Async Event Processing ==
+
+mq -> cust : Consume user.created.customer
+activate cust
+
+cust -> custdb : Check auth_user_id exists?
+custdb --> cust : Not found (idempotent check)
+
+cust -> custdb : INSERT Customer\n{name, email, auth_user_id}
+custdb --> cust : Created
+
+cust -> mq : Publish customer.created\n{customer_id}
+deactivate cust
+
+mq -> cart : Consume customer.created
+activate cart
+cart -> cartdb : Check customer_id exists?
+cartdb --> cart : Not found
+
+cart -> cartdb : INSERT Cart\n{customer_id}
+cartdb --> cart : Created
+deactivate cart
+
+note over mq
+  Event chain:
+  auth -> user.created.customer -> customer-service
+  customer-service -> customer.created -> cart-service
+
+  All handlers are idempotent:
+  duplicate events do not create duplicate records
+end note
 
 @enduml

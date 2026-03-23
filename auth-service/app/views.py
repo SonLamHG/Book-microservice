@@ -28,6 +28,15 @@ class Register(APIView):
         user.set_password(password)
         user.save()
 
+        # Publish event for async profile creation in downstream services
+        from .messaging import publish_event
+        publish_event(f'user.created.{user.role.lower()}', {
+            'user_id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'role': user.role,
+        })
+
         token = generate_token(user.id, user.username, user.role)
         return Response({
             'token': token,

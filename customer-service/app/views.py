@@ -18,7 +18,10 @@ class CustomerListCreate(APIView):
         serializer = CustomerSerializer(data=request.data)
         if serializer.is_valid():
             customer = serializer.save()
-            # Auto-create cart for new customer
+            # Publish event for async cart creation via RabbitMQ
+            from .messaging import publish_event
+            publish_event('customer.created', {'customer_id': customer.id})
+            # HTTP fallback: also call cart-service directly (kept for backwards compatibility)
             try:
                 requests.post(
                     f"{CART_SERVICE_URL}/carts/",
@@ -26,7 +29,7 @@ class CustomerListCreate(APIView):
                     timeout=5,
                 )
             except requests.exceptions.RequestException:
-                pass  # Cart service might be unavailable
+                pass  # Cart will be created via event if HTTP fails
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

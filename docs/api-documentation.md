@@ -2,8 +2,9 @@
 
 ## Overview
 
-All backend services use Django REST Framework and communicate via JSON over HTTP.
+All backend services use Django REST Framework and communicate via JSON over HTTP and RabbitMQ events.
 Each service runs on port 8000 internally; external ports are mapped via Docker Compose.
+Authentication is handled by Auth Service (JWT). The API Gateway enforces role-based access control (RBAC).
 
 **Base URLs (Docker):**
 
@@ -20,6 +21,7 @@ Each service runs on port 8000 internally; external ports are mapped via Docker 
 | ship-service           | `http://ship-service:8000`            | 8009          |
 | comment-rate-service   | `http://comment-rate-service:8000`    | 8010          |
 | recommender-ai-service | `http://recommender-ai-service:8000`  | 8011          |
+| auth-service           | `http://auth-service:8000`            | 8012          |
 
 ---
 
@@ -37,6 +39,7 @@ List all customers.
     "email": "john@example.com",
     "phone": "0123456789",
     "address": "123 Main St",
+    "auth_user_id": 1,
     "created_at": "2026-03-10T12:00:00Z"
   }
 ]
@@ -58,7 +61,9 @@ Register a new customer. Automatically creates a cart via cart-service.
 **Response** `201 Created` — Customer object
 **Error** `400 Bad Request` — Validation errors
 
-**Side Effect:** `POST cart-service:8000/carts/` with `{"customer_id": <id>}`
+**Side Effects:**
+- `POST cart-service:8000/carts/` with `{"customer_id": <id>}` (HTTP fallback)
+- Publishes `customer.created` event via RabbitMQ (async cart creation)
 
 ### GET /customers/{id}/
 Get customer by ID.
@@ -578,6 +583,7 @@ List all staff members.
     "name": "Alice",
     "email": "alice@store.com",
     "role": "staff",
+    "auth_user_id": 2,
     "created_at": "2026-03-10T12:00:00Z"
   }
 ]
@@ -632,6 +638,7 @@ List all managers.
     "name": "Bob",
     "email": "bob@store.com",
     "department": "Sales",
+    "auth_user_id": 3,
     "created_at": "2026-03-10T12:00:00Z"
   }
 ]
@@ -752,3 +759,125 @@ Common HTTP status codes:
 - `400 Bad Request` — Validation error
 - `404 Not Found` — Resource not found
 - `503 Service Unavailable` — Dependent service unreachable
+- `403 Forbidden` — Insufficient role permissions (RBAC)
+
+---
+
+## 13. Auth Service (port 8012)
+
+### POST /auth/register/
+Register a new user and receive JWT token.
+
+**Request Body**
+```json
+{
+  "username": "johndoe",       // required, unique, max 150 chars
+  "email": "john@example.com", // required, unique
+  "password": "securepass",    // required
+  "role": "CUSTOMER"           // optional, default "CUSTOMER"
+}
+```
+
+**Role Values:** `CUSTOMER` | `STAFF` | `MANAGER` | `ADMIN`
+
+**Response** `201 Created`
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "username": "johndoe",
+    "email": "john@example.com",
+    "role": "CUSTOMER",
+    "created_at": "2026-03-10T12:00:00Z"
+  }
+}
+```
+
+**Error** `400 Bad Request` — Missing fields, duplicate username/email
+
+**Side Effect:** Publishes `user.created.{role}` event via RabbitMQ (e.g., `user.created.customer`)
+
+### POST /auth/login/
+Authenticate user and receive JWT token.
+
+**Request Body**
+```json
+{
+  "username": "johndoe",
+  "password": "securepass"
+}
+```
+
+**Response** `200 OK` — Same format as register response
+**Error** `401 Unauthorized` — Invalid credentials
+
+### POST /auth/verify/
+Verify a JWT token.
+
+**Request Body**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+Or via `Authorization: Bearer <token>` header.
+
+**Response** `200 OK`
+```json
+{
+  "valid": true,
+  "user": {
+    "user_id": 1,
+    "username": "johndoe",
+    "role": "CUSTOMER"
+  }
+}
+```
+
+**Error** `401 Unauthorized` — Invalid or expired token
+
+### GET /auth/users/
+List all users (internal use).
+
+**Response** `200 OK` — Array of user objects (without password)
+
+---
+
+## 14. RabbitMQ Events
+
+**Exchange:** `bookstore` (type: topic, durable)
+**Queue Naming:** `{service-name}.{routing-key}`
+
+| Routing Key | Publisher | Consumer | Payload |
+|-------------|----------|----------|---------|
+| `user.created.customer` | auth-service | customer-service | `{"user_id": 1, "username": "john", "email": "john@example.com", "role": "CUSTOMER"}` |
+| `user.created.staff` | auth-service | staff-service | `{"user_id": 2, "username": "alice", "email": "alice@store.com", "role": "STAFF"}` |
+| `user.created.manager` | auth-service | manager-service | `{"user_id": 3, "username": "bob", "email": "bob@store.com", "role": "MANAGER"}` |
+| `customer.created` | customer-service | cart-service | `{"customer_id": 1}` |
+| `order.created` | order-service | — | `{"order_id": 1, "customer_id": 1, "total_amount": "59.98", "payment_id": 1, "shipment_id": 1}` |
+| `order.status_changed` | order-service | — | `{"order_id": 1, "status": "PAID"}` |
+| `payment.completed` | pay-service | order-service | `{"payment_id": 1, "order_id": 1}` |
+| `shipment.shipped` | ship-service | order-service | `{"shipment_id": 1, "order_id": 1}` |
+
+---
+
+## 15. RBAC Permission Matrix
+
+Access control enforced at API Gateway level based on JWT role.
+
+| Resource | CUSTOMER | STAFF | MANAGER | ADMIN |
+|----------|----------|-------|---------|-------|
+| Books (read) | Yes | Yes | Yes | Yes |
+| Books (create/edit/delete) | No | Yes | Yes | Yes |
+| Customers (list/edit) | No | Yes | Yes | Yes |
+| Customers (delete) | No | No | Yes | Yes |
+| Staff (list) | No | Yes | Yes | Yes |
+| Staff (create/edit) | No | No | Yes | Yes |
+| Staff (delete) | No | No | No | Yes |
+| Managers (list) | No | No | Yes | Yes |
+| Managers (create/edit/delete) | No | No | No | Yes |
+| Categories (create/edit) | No | Yes | Yes | Yes |
+| Categories (delete) | No | No | Yes | Yes |
+| Cart / Orders / Reviews / Recommendations | Yes | Yes | Yes | Yes |

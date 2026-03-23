@@ -6,6 +6,7 @@
                     ┌─────────────────────────────────┐
                     │       API Gateway (:8000)        │
                     │  Django (HTML Templates + Proxy) │
+                    │  JWT Auth + RBAC Middleware       │
                     └──────────────┬──────────────────┘
                                    │
         ┌──────────┬──────────┬────┴────┬──────────┬──────────┐
@@ -18,17 +19,21 @@
                                           │
                                 ┌─────────┼─────────┐
                                 ▼         ▼         ▼
-                          ┌──────────┐┌─────────┐┌─────────┐
-                          │ Payment  ││  Ship   ││ Catalog │
-                          │ Service  ││ Service ││ Service │
-                          │  :8008   ││  :8009  ││  :8006  │
-                          └──────────┘└─────────┘└─────────┘
-
-                          ┌──────────┐┌─────────┐
-                          │  Staff   ││ Manager │
-                          │ Service  ││ Service │
-                          │  :8004   ││  :8005  │
-                          └──────────┘└─────────┘
+  ┌──────────┐            ┌──────────┐┌─────────┐┌─────────┐
+  │   Auth   │            │ Payment  ││  Ship   ││ Catalog │
+  │ Service  │            │ Service  ││ Service ││ Service │
+  │  :8012   │            │  :8008   ││  :8009  ││  :8006  │
+  └────┬─────┘            └──────────┘└─────────┘└─────────┘
+       │
+       │ events              ┌──────────┐┌─────────┐
+       └──────────────┐      │  Staff   ││ Manager │
+                      ▼      │ Service  ││ Service │
+               ┌────────────┐│  :8004   ││  :8005  │
+               │  RabbitMQ  │└──────────┘└─────────┘
+               │  :5673     │
+               │ (bookstore │
+               │  exchange) │
+               └────────────┘
 ```
 
 ---
@@ -63,6 +68,57 @@
        └──────────────────────────────> Book Service
 ```
 
+### Event-Driven Communication (via RabbitMQ)
+
+```
+┌──────────────┐  user.created.{role}   ┌─────────────────┐
+│     Auth     │ ~~~~~~~~~~~~~~~~~~~~~~>│ RabbitMQ        │
+│   Service    │                        │ Exchange:       │
+└──────────────┘                        │ bookstore       │
+                                        │ (topic, durable)│
+                                        └───┬───┬───┬─────┘
+                  user.created.customer     │   │   │
+              ┌─────────────────────────────┘   │   │
+              ▼                                 │   │
+       ┌──────────────┐                         │   │
+       │   Customer   │                         │   │
+       │   Service    │  customer.created       │   │
+       │  (consume +  │ ~~~~~~~~~~~~~~~~~~>     │   │
+       │   publish)   │                    │    │   │
+       └──────────────┘                    │    │   │
+                                           ▼    │   │
+                                    ┌────────── │── │──┐
+                                    │   Cart   ││   │  │
+                                    │  Service ││   │  │
+                                    │(consume) ││   │  │
+                                    └──────────┘│   │  │
+                  user.created.staff            │   │
+              ┌─────────────────────────────────┘   │
+              ▼                                     │
+       ┌──────────────┐                             │
+       │    Staff     │                             │
+       │   Service    │   user.created.manager      │
+       │  (consume)   │ ┌──────────────────────────┘
+       └──────────────┘ ▼
+                 ┌──────────────┐
+                 │   Manager    │
+                 │   Service    │
+                 │  (consume)   │
+                 └──────────────┘
+
+┌──────────────┐ payment.completed  ┌──────────────┐
+│   Payment    │ ~~~~~~~~~~~~~~~~~~>│    Order     │
+│   Service    │                    │   Service    │
+└──────────────┘                    │  (consume)   │
+                                    │ status→PAID  │
+┌──────────────┐ shipment.shipped   │              │
+│   Shipping   │ ~~~~~~~~~~~~~~~~~~>│ status→      │
+│   Service    │                    │  SHIPPING    │
+└──────────────┘                    └──────────────┘
+
+Legend: ──> HTTP (sync)   ~~~> RabbitMQ event (async)
+```
+
 ---
 
 ## 3. Individual Service Architectures
@@ -81,15 +137,16 @@
 │  │   <pk>/     │  │                │  │ - email     ││
 │  └─────────────┘  └───────┬────────┘  │ - phone     ││
 │                           │           │ - address   ││
-│                           ▼           └──────┬──────┘│
-│                    ┌──────────────┐          │       │
+│                           ▼           │-auth_user_id││
+│                    ┌──────────────┐   └──────┬──────┘│
 │                    │serializers.py│          ▼       │
 │                    │              │    ┌───────────┐ │
 │                    │CustomerSer.  │    │  SQLite   │ │
 │                    └──────────────┘    └───────────┘ │
 │                                                        │
-│  External Call:                                        │
-│  POST cart-service:8000/carts/ (on create)             │
+│  HTTP: POST cart-service:8000/carts/ (on create)       │
+│  Publish: customer.created (RabbitMQ)                  │
+│  Consume: user.created.customer (creates profile)      │
 └───────────────────────────────────────────────────────┘
 ```
 
@@ -286,11 +343,11 @@
 │  │ /staff/     │  │ StaffDetail    │  │ - name       ││
 │  │   <pk>/     │  │                │  │ - email      ││
 │  └─────────────┘  └───────┬────────┘  │ - role       ││
-│                           ▼           └──────┬───────┘│
-│                    ┌──────────────┐          ▼        │
-│                    │serializers.py│    ┌───────────┐   │
-│                    └──────────────┘    │  SQLite   │   │
-│  No external calls                     └───────────┘   │
+│                           ▼           │-auth_user_id ││
+│                    ┌──────────────┐   └──────┬───────┘│
+│                    │serializers.py│          ▼        │
+│                    └──────────────┘    ┌───────────┐   │
+│  Consume: user.created.staff           └───────────┘   │
 └───────────────────────────────────────────────────────┘
 ```
 
@@ -307,11 +364,11 @@
 │  │ /managers/  │  │ ManagerDetail  │  │ - name       ││
 │  │   <pk>/     │  │                │  │ - email      ││
 │  └─────────────┘  └───────┬────────┘  │ - department ││
-│                           ▼           └──────┬───────┘│
-│                    ┌──────────────┐          ▼        │
-│                    │serializers.py│    ┌───────────┐   │
-│                    └──────────────┘    │  SQLite   │   │
-│  No external calls                     └───────────┘   │
+│                           ▼           │-auth_user_id ││
+│                    ┌──────────────┐   └──────┬───────┘│
+│                    │serializers.py│          ▼        │
+│                    └──────────────┘    ┌───────────┐   │
+│  Consume: user.created.manager         └───────────┘   │
 └───────────────────────────────────────────────────────┘
 ```
 
@@ -347,7 +404,7 @@
 ```
 ┌───────────────────────────────────────────────────────┐
 │                      API Gateway                       │
-│             (Web Interface + Service Proxy)             │
+│     (Web Interface + Service Proxy + JWT + RBAC)       │
 │                                                        │
 │  ┌─────────────┐  ┌────────────────┐  ┌──────────────┐│
 │  │   urls.py   │─>│    views.py    │─>│  templates/  ││
@@ -367,7 +424,15 @@
 │                           ├─> pay-service      :8008   │
 │                           ├─> ship-service     :8009   │
 │                           ├─> comment-rate     :8010   │
-│                           └─> recommender-ai   :8011   │
+│                           ├─> recommender-ai   :8011   │
+│                           └─> auth-service     :8012   │
+│                                                        │
+│  Middleware Chain:                                      │
+│  1. LoggingMiddleware (request logging)                 │
+│  2. RateLimitMiddleware (60 req/min/IP)                 │
+│  3. SessionMiddleware                                   │
+│  4. CsrfViewMiddleware                                  │
+│  5. JWTAuthMiddleware (token verify + RBAC)             │
 └───────────────────────────────────────────────────────┘
 ```
 
@@ -413,8 +478,9 @@ Customer    API Gateway    Order Service    Cart Service    Book Service    Pay 
 │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
 │  │     Identity     │  │     Catalog      │  │     Ordering     │  │
 │  │                  │  │                  │  │                  │  │
-│  │ customer-service │  │ catalog-service  │  │  cart-service    │  │
-│  │ staff-service    │  │ book-service     │  │  order-service   │  │
+│  │ auth-service     │  │ catalog-service  │  │  cart-service    │  │
+│  │ customer-service │  │ book-service     │  │  order-service   │  │
+│  │ staff-service    │  │                  │  │                  │  │
 │  │ manager-service  │  │                  │  │                  │  │
 │  └──────────────────┘  └──────────────────┘  └──────────────────┘  │
 │                                                                      │
@@ -466,7 +532,20 @@ Customer    API Gateway    Order Service    Cart Service    Book Service    Pay 
 │  │ 8010:8000     │ │ 8011:8000     │ │ 8000:8000     ││
 │  └───────────────┘ └───────────────┘ └───────────────┘│
 │                                                        │
+│  ┌───────────────┐ ┌───────────────┐                    │
+│  │ auth-         │ │ rabbitmq      │                    │
+│  │ service       │ │ (broker)      │                    │
+│  │ 8012:8000     │ │ 5673:5672     │                    │
+│  └───────────────┘ │ 15673:15672   │                    │
+│                     └───────────────┘                    │
+│                                                        │
+│  Data Persistence (Docker Volumes):                    │
+│  Each service: {service}_data:/app/data (SQLite)       │
+│  RabbitMQ: rabbitmq_data:/var/lib/rabbitmq             │
+│                                                        │
 │  Startup Order (depends_on):                           │
+│  rabbitmq -> auth, customer, staff, manager, cart,     │
+│              order, pay, ship services                  │
 │  book-service -> cart-service -> customer-service      │
 │  pay-service, ship-service -> order-service            │
 │  comment-rate-service -> recommender-ai-service        │
