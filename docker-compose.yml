@@ -4,6 +4,8 @@ services:
     ports:
       - "5673:5672"
       - "15673:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "check_running"]
       interval: 10s
@@ -14,6 +16,8 @@ services:
     build: ./customer-service
     ports:
       - "8001:8000"
+    volumes:
+      - customer_data:/app/data
     depends_on:
       - cart-service
 
@@ -21,26 +25,36 @@ services:
     build: ./staff-service
     ports:
       - "8004:8000"
+    volumes:
+      - staff_data:/app/data
 
   manager-service:
     build: ./manager-service
     ports:
       - "8005:8000"
+    volumes:
+      - manager_data:/app/data
 
   catalog-service:
     build: ./catalog-service
     ports:
       - "8006:8000"
+    volumes:
+      - catalog_data:/app/data
 
   book-service:
     build: ./book-service
     ports:
       - "8002:8000"
+    volumes:
+      - book_data:/app/data
 
   cart-service:
     build: ./cart-service
     ports:
       - "8003:8000"
+    volumes:
+      - cart_data:/app/data
     depends_on:
       - book-service
 
@@ -48,6 +62,8 @@ services:
     build: ./order-service
     ports:
       - "8007:8000"
+    volumes:
+      - order_data:/app/data
     depends_on:
       - cart-service
       - book-service
@@ -59,6 +75,8 @@ services:
     build: ./pay-service
     ports:
       - "8008:8000"
+    volumes:
+      - pay_data:/app/data
     depends_on:
       - rabbitmq
 
@@ -66,6 +84,8 @@ services:
     build: ./ship-service
     ports:
       - "8009:8000"
+    volumes:
+      - ship_data:/app/data
     depends_on:
       - rabbitmq
 
@@ -73,11 +93,15 @@ services:
     build: ./comment-rate-service
     ports:
       - "8010:8000"
+    volumes:
+      - comment_rate_data:/app/data
 
   recommender-ai-service:
     build: ./recommender-ai-service
     ports:
       - "8011:8000"
+    volumes:
+      - recommender_data:/app/data
     depends_on:
       - book-service
       - comment-rate-service
@@ -86,11 +110,15 @@ services:
     build: ./auth-service
     ports:
       - "8012:8000"
+    volumes:
+      - auth_data:/app/data
 
   api-gateway:
     build: ./api-gateway
     ports:
       - "8000:8000"
+    volumes:
+      - gateway_data:/app/data
     depends_on:
       - customer-service
       - staff-service
@@ -104,3 +132,19 @@ services:
       - comment-rate-service
       - recommender-ai-service
       - auth-service
+
+volumes:
+  rabbitmq_data:
+  customer_data:
+  staff_data:
+  manager_data:
+  catalog_data:
+  book_data:
+  cart_data:
+  order_data:
+  pay_data:
+  ship_data:
+  comment_rate_data:
+  recommender_data:
+  auth_data:
+  gateway_data:

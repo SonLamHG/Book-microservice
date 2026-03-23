@@ -1,3 +1,4 @@
+import re
 import time
 import logging
 from collections import defaultdict
@@ -12,8 +13,58 @@ PUBLIC_PATHS = [
     '/',
     '/auth/login/',
     '/auth/register/',
+    '/auth/logout/',
     '/health/',
 ]
+
+# Role-based access control: maps (resource, action) to allowed roles
+# Actions: 'list', 'create', 'edit', 'delete'
+# If a path is not matched, any authenticated user is allowed
+ROLE_PERMISSIONS = {
+    # Books
+    ('books', 'create'): ['STAFF', 'MANAGER', 'ADMIN'],
+    ('books', 'edit'): ['STAFF', 'MANAGER', 'ADMIN'],
+    ('books', 'delete'): ['STAFF', 'MANAGER', 'ADMIN'],
+    # Customers
+    ('customers', 'list'): ['STAFF', 'MANAGER', 'ADMIN'],
+    ('customers', 'register'): ['STAFF', 'MANAGER', 'ADMIN'],
+    ('customers', 'edit'): ['STAFF', 'MANAGER', 'ADMIN'],
+    ('customers', 'delete'): ['MANAGER', 'ADMIN'],
+    # Staff
+    ('staff', 'list'): ['STAFF', 'MANAGER', 'ADMIN'],
+    ('staff', 'create'): ['MANAGER', 'ADMIN'],
+    ('staff', 'edit'): ['MANAGER', 'ADMIN'],
+    ('staff', 'delete'): ['ADMIN'],
+    # Managers
+    ('managers', 'list'): ['MANAGER', 'ADMIN'],
+    ('managers', 'create'): ['ADMIN'],
+    ('managers', 'edit'): ['ADMIN'],
+    ('managers', 'delete'): ['ADMIN'],
+    # Categories
+    ('categories', 'create'): ['STAFF', 'MANAGER', 'ADMIN'],
+    ('categories', 'edit'): ['STAFF', 'MANAGER', 'ADMIN'],
+    ('categories', 'delete'): ['MANAGER', 'ADMIN'],
+}
+
+# Regex patterns to extract resource and action from URL paths
+# Matches: /resource/create/, /resource/<id>/edit/, /resource/<id>/delete/,
+#          /resource/register/, /resource/
+PATH_PATTERNS = [
+    re.compile(r'^/(?P<resource>\w+)/(?P<action>create|register)/$'),
+    re.compile(r'^/(?P<resource>\w+)/\d+/(?P<action>edit|delete)/$'),
+    re.compile(r'^/(?P<resource>\w+)/$'),
+]
+
+
+def _get_permission_key(path):
+    """Extract (resource, action) from a URL path for permission checking."""
+    for pattern in PATH_PATTERNS:
+        match = pattern.match(path)
+        if match:
+            resource = match.group('resource')
+            action = match.groupdict().get('action', 'list')
+            return (resource, action)
+    return None
 
 
 class LoggingMiddleware:
@@ -60,7 +111,7 @@ class RateLimitMiddleware:
 
 
 class JWTAuthMiddleware:
-    """Validates JWT token from session for protected routes."""
+    """Validates JWT token from session and enforces role-based access control."""
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -94,5 +145,14 @@ class JWTAuthMiddleware:
             # If auth service is unavailable, allow request with warning
             request.user_data = request.session.get('user_data', {})
             logger.warning("Auth service unavailable, using cached user data")
+
+        # Role-based access control
+        user_role = getattr(request, 'user_data', {}).get('role', '')
+        perm_key = _get_permission_key(request.path)
+        if perm_key and perm_key in ROLE_PERMISSIONS:
+            allowed_roles = ROLE_PERMISSIONS[perm_key]
+            if user_role not in allowed_roles:
+                from django.shortcuts import render
+                return render(request, 'forbidden.html', status=403)
 
         return self.get_response(request)

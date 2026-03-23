@@ -75,6 +75,8 @@
                 <a href="/customers/">Customers</a>
                 <a href="/categories/">Categories</a>
                 <a href="/staff/">Staff</a>
+            {% endif %}
+            {% if user_role == 'MANAGER' or user_role == 'ADMIN' %}
                 <a href="/managers/">Managers</a>
             {% endif %}
         </div>

@@ -2,9 +2,11 @@
 {% block title %}Categories{% endblock %}
 {% block content %}
 <h1>Category List</h1>
+{% if user_role == 'STAFF' or user_role == 'MANAGER' or user_role == 'ADMIN' %}
 <p style="margin-bottom: 15px;">
     <a href="/categories/create/" class="btn btn-success">+ Add Category</a>
 </p>
+{% endif %}
 <table>
     <tr>
         <th>ID</th><th>Name</th><th>Description</th><th>Actions</th>
@@ -16,11 +18,15 @@
         <td>{{ c.description }}</td>
         <td>
             <div class="actions">
+                {% if user_role == 'STAFF' or user_role == 'MANAGER' or user_role == 'ADMIN' %}
                 <a href="/categories/{{ c.id }}/edit/" class="btn btn-sm btn-warning">Edit</a>
+                {% endif %}
+                {% if user_role == 'MANAGER' or user_role == 'ADMIN' %}
                 <form method="post" action="/categories/{{ c.id }}/delete/" style="display: inline;">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this category?')">Delete</button>
                 </form>
+                {% endif %}
             </div>
         </td>
     </tr>

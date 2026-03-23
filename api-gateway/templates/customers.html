@@ -22,6 +22,8 @@
                 <a href="/recommendations/{{ c.id }}/" class="btn btn-sm btn-success">Recommend</a>
                 {% if user_role == 'STAFF' or user_role == 'MANAGER' or user_role == 'ADMIN' %}
                 <a href="/customers/{{ c.id }}/edit/" class="btn btn-sm btn-warning">Edit</a>
+                {% endif %}
+                {% if user_role == 'MANAGER' or user_role == 'ADMIN' %}
                 <form method="post" action="/customers/{{ c.id }}/delete/" style="display: inline;">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this customer?')">Delete</button>

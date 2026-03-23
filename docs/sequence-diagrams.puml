@@ -1,0 +1,821 @@
+@startuml 01_User_Registration
+title Sequence Diagram - User Registration Flow
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 10
+skinparam sequenceParticipant underline
+
+actor "User" as user
+participant "API Gateway\n:8000" as gw
+participant "Auth Service\n:8012" as auth
+participant "Customer Service\n:8001" as cust
+participant "Cart Service\n:8003" as cart
+database "Auth DB" as authdb
+database "Customer DB" as custdb
+database "Cart DB" as cartdb
+
+user -> gw : POST /auth/register/\n{username, email, password, role}
+activate gw
+
+gw -> auth : POST /auth/register/\n{username, email, password, role}
+activate auth
+
+auth -> authdb : Check username & email uniqueness
+authdb --> auth : OK (unique)
+
+auth -> authdb : Hash password & Create User record
+authdb --> auth : User created
+
+auth -> auth : generate_token(user_id, username, role)\nJWT HS256, expires 24h
+
+auth --> gw : 201 {token, user_id, username, role}
+deactivate auth
+
+gw -> gw : Store JWT token in session
+
+alt role == "CUSTOMER"
+    gw -> cust : POST /customers/\n{name, email, auth_user_id}
+    activate cust
+
+    cust -> custdb : Create Customer record
+    custdb --> cust : Customer created
+
+    cust -> cart : POST /carts/\n{customer_id}
+    activate cart
+    cart -> cartdb : Create Cart record
+    cartdb --> cart : Cart created
+    cart --> cust : 201 {cart_id, customer_id}
+    deactivate cart
+
+    cust --> gw : 201 {customer_id, name, email}
+    deactivate cust
+end
+
+gw --> user : Redirect to Dashboard\n(authenticated session)
+deactivate gw
+
+@enduml
+
+
+@startuml 02_User_Login
+title Sequence Diagram - User Login & Authentication Flow
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 10
+
+actor "User" as user
+participant "API Gateway\n:8000" as gw
+participant "Auth Service\n:8012" as auth
+database "Auth DB" as authdb
+
+== Login ==
+
+user -> gw : POST /auth/login/\n{username, password}
+activate gw
+
+gw -> auth : POST /auth/login/\n{username, password}
+activate auth
+
+auth -> authdb : SELECT User WHERE username
+authdb --> auth : User record
+
+auth -> auth : check_password(password, hashed)
+
+alt Password valid
+    auth -> auth : generate_token(user_id, username, role)
+    auth --> gw : 200 {token, user_id, username, role}
+else Password invalid
+    auth --> gw : 401 {error: "Invalid credentials"}
+    gw --> user : Show login error
+end
+deactivate auth
+
+gw -> gw : Store token & user_data in session
+gw --> user : Redirect to Dashboard
+deactivate gw
+
+== Subsequent Request (JWT Middleware) ==
+
+user -> gw : GET /books/ (with session cookie)
+activate gw
+
+gw -> gw : JWTAuthMiddleware\nExtract token from session
+
+alt Path is public (/, /auth/login/, /health/)
+    gw -> gw : Skip auth check
+else Path is protected
+    gw -> auth : POST /auth/verify/\n{token}
+    activate auth
+    auth -> auth : jwt.decode(token, secret, HS256)
+
+    alt Token valid & not expired
+        auth --> gw : 200 {valid: true, payload}
+        gw -> gw : Set request.user_data
+    else Token invalid or expired
+        auth --> gw : 401 {valid: false}
+        gw --> user : Redirect to /auth/login/
+    end
+    deactivate auth
+end
+
+gw -> gw : RateLimitMiddleware\n(60 req/min per IP)
+gw -> gw : LoggingMiddleware\n(log method, path, status, duration)
+
+gw --> user : Render requested page
+deactivate gw
+
+@enduml
+
+
+@startuml 03_Browse_Books
+title Sequence Diagram - Browse Books & Book Details
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 10
+
+actor "User" as user
+participant "API Gateway\n:8000" as gw
+participant "Book Service\n:8002" as book
+participant "Catalog Service\n:8006" as catalog
+participant "Comment-Rate\nService :8010" as review
+database "Book DB" as bookdb
+database "Catalog DB" as catdb
+database "Review DB" as reviewdb
+
+== List Books ==
+
+user -> gw : GET /books/?page=1&search=python
+activate gw
+
+gw -> book : GET /books/
+activate book
+book -> bookdb : SELECT * FROM Book
+bookdb --> book : List of books
+book --> gw : 200 [{id, title, author, price, stock, ISBN, ...}]
+deactivate book
+
+gw -> catalog : GET /categories/
+activate catalog
+catalog -> catdb : SELECT * FROM Category
+catdb --> catalog : List of categories
+catalog --> gw : 200 [{id, name, description}]
+deactivate catalog
+
+gw -> gw : Client-side search filter\n& pagination (10/page)
+
+gw --> user : Render book list page
+deactivate gw
+
+== View Book Details with Reviews ==
+
+user -> gw : GET /reviews/book/{book_id}/
+activate gw
+
+gw -> book : GET /books/{book_id}/
+activate book
+book -> bookdb : SELECT Book WHERE id
+bookdb --> book : Book details
+book --> gw : 200 {title, author, price, ...}
+deactivate book
+
+gw -> review : GET /reviews/book/{book_id}/
+activate review
+review -> reviewdb : SELECT Review WHERE book_id\nAVG(rating)
+reviewdb --> review : Reviews + avg rating
+review --> gw : 200 {book_id, average_rating, reviews: [...]}
+deactivate review
+
+gw --> user : Render book detail + reviews page
+deactivate gw
+
+@enduml
+
+
+@startuml 04_Cart_Operations
+title Sequence Diagram - Shopping Cart Operations
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 10
+
+actor "User" as user
+participant "API Gateway\n:8000" as gw
+participant "Cart Service\n:8003" as cart
+participant "Book Service\n:8002" as book
+database "Cart DB" as cartdb
+database "Book DB" as bookdb
+
+== Add Item to Cart ==
+
+user -> gw : POST /cart/{customer_id}/add/\n{book_id, quantity}
+activate gw
+
+gw -> cart : POST /cart-items/\n{cart_id, book_id, quantity}
+activate cart
+
+cart -> book : GET /books/{book_id}/
+activate book
+book -> bookdb : SELECT Book WHERE id
+bookdb --> book : Book data
+book --> cart : 200 {id, title, price, stock}
+deactivate book
+
+alt Book exists & in stock
+    cart -> cartdb : INSERT/UPDATE CartItem\n(unique: cart + book_id)
+    cartdb --> cart : CartItem created/updated
+    cart --> gw : 201 {cart_item_id, book_id, quantity}
+else Book not found or out of stock
+    cart --> gw : 400 {error: "Book not available"}
+end
+deactivate cart
+
+gw --> user : Redirect to cart page
+deactivate gw
+
+== View Cart ==
+
+user -> gw : GET /cart/{customer_id}/
+activate gw
+
+gw -> cart : GET /carts/{customer_id}/
+activate cart
+cart -> cartdb : SELECT CartItems WHERE cart.customer_id
+cartdb --> cart : List of cart items
+cart --> gw : 200 {customer_id, items: [{book_id, quantity}]}
+deactivate cart
+
+loop For each cart item
+    gw -> book : GET /books/{book_id}/
+    activate book
+    book -> bookdb : SELECT Book WHERE id
+    bookdb --> book : Book data
+    book --> gw : 200 {title, price, ...}
+    deactivate book
+end
+
+gw -> gw : Enrich cart items with book details\nCalculate subtotals & total
+
+gw --> user : Render cart page\n(items, quantities, prices, total)
+deactivate gw
+
+== Update Quantity ==
+
+user -> gw : POST /cart/{customer_id}/update/{item_id}/\n{quantity}
+activate gw
+gw -> cart : PUT /cart-items/{item_id}/\n{quantity}
+activate cart
+cart -> cartdb : UPDATE CartItem SET quantity
+cartdb --> cart : Updated
+cart --> gw : 200 {updated item}
+deactivate cart
+gw --> user : Redirect to cart page
+deactivate gw
+
+== Remove Item ==
+
+user -> gw : POST /cart/{customer_id}/remove/{item_id}/
+activate gw
+gw -> cart : DELETE /cart-items/{item_id}/
+activate cart
+cart -> cartdb : DELETE CartItem WHERE id
+cartdb --> cart : Deleted
+cart --> gw : 204 No Content
+deactivate cart
+gw --> user : Redirect to cart page
+deactivate gw
+
+@enduml
+
+
+@startuml 05_Create_Order_Saga
+title Sequence Diagram - Create Order (Saga Pattern)
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 10
+
+actor "User" as user
+participant "API Gateway\n:8000" as gw
+participant "Order Service\n:8007" as order
+participant "Cart Service\n:8003" as cart
+participant "Book Service\n:8002" as book
+participant "Payment Service\n:8008" as pay
+participant "Shipping Service\n:8009" as ship
+queue "RabbitMQ" as mq
+database "Order DB" as orderdb
+database "Pay DB" as paydb
+database "Ship DB" as shipdb
+
+user -> gw : POST /orders/create/\n{customer_id, shipping_address,\npayment_method, shipping_method}
+activate gw
+
+gw -> order : POST /orders/\n{customer_id, shipping_address,\npayment_method, shipping_method}
+activate order
+
+== Step 1: Get Cart Items ==
+
+order -> orderdb : SagaLog(step="get_cart", status="STARTED")
+
+order -> cart : GET /carts/{customer_id}/
+activate cart
+cart --> order : 200 {items: [{book_id, quantity}, ...]}
+deactivate cart
+
+alt Cart is empty
+    order -> orderdb : SagaLog(step="get_cart", status="FAILED")
+    order --> gw : 400 {error: "Cart is empty"}
+    gw --> user : Show error message
+else Cart has items
+    order -> orderdb : SagaLog(step="get_cart", status="COMPLETED")
+end
+
+== Step 2: Get Book Prices & Calculate Total ==
+
+order -> orderdb : SagaLog(step="get_prices", status="STARTED")
+
+loop For each cart item
+    order -> book : GET /books/{book_id}/
+    activate book
+    book --> order : 200 {price, title, stock}
+    deactivate book
+end
+
+order -> order : Calculate total_amount\n= Σ(price × quantity)
+
+order -> orderdb : SagaLog(step="get_prices", status="COMPLETED")
+
+== Step 3: Reserve Payment ==
+
+order -> orderdb : SagaLog(step="create_payment", status="STARTED")
+
+order -> pay : POST /payments/\n{order_id, amount, method}
+activate pay
+pay -> paydb : INSERT Payment\n(status=RESERVED)
+paydb --> pay : Payment created
+pay --> order : 201 {payment_id, status: "RESERVED"}
+deactivate pay
+
+order -> orderdb : SagaLog(step="create_payment", status="COMPLETED")
+
+== Step 4: Reserve Shipment ==
+
+order -> orderdb : SagaLog(step="create_shipment", status="STARTED")
+
+order -> ship : POST /shipments/\n{order_id, address, method}
+activate ship
+ship -> shipdb : INSERT Shipment\n(status=RESERVED,\ntracking=TRK-{uuid})
+shipdb --> ship : Shipment created
+ship --> order : 201 {shipment_id, tracking_number, status: "RESERVED"}
+deactivate ship
+
+order -> orderdb : SagaLog(step="create_shipment", status="COMPLETED")
+
+== Step 5: Create Order & Publish Event ==
+
+order -> orderdb : INSERT Order(status=PENDING)\nINSERT OrderItems
+orderdb --> order : Order created
+
+order -> mq : Publish event\nexchange: "bookstore"\nrouting_key: "order.created"\n{order_id, customer_id, total_amount}
+
+order --> gw : 201 {order_id, status, total_amount,\npayment_id, shipment_id}
+deactivate order
+
+gw --> user : Redirect to order confirmation page
+deactivate gw
+
+== Compensation (if shipment fails) ==
+
+note over order, ship
+  If shipment reservation fails,
+  the saga compensates by canceling
+  the payment reservation
+end note
+
+order -> orderdb : SagaLog(step="create_shipment", status="FAILED")
+order -> pay : PUT /payments/{payment_id}/cancel/
+activate pay
+pay -> paydb : UPDATE Payment SET status=FAILED
+pay --> order : 200 {status: "FAILED"}
+deactivate pay
+order -> orderdb : SagaLog(step="compensate_payment", status="COMPLETED")
+order --> gw : 500 {error: "Order creation failed"}
+
+@enduml
+
+
+@startuml 06_Payment_Processing
+title Sequence Diagram - Payment Processing & Status Update
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 10
+
+actor "Staff/Admin" as staff
+participant "API Gateway\n:8000" as gw
+participant "Order Service\n:8007" as order
+participant "Payment Service\n:8008" as pay
+queue "RabbitMQ" as mq
+database "Order DB" as orderdb
+database "Pay DB" as paydb
+
+== Update Payment Status (RESERVED → COMPLETED) ==
+
+staff -> gw : PUT /payments/{payment_id}/\n{status: "COMPLETED"}
+activate gw
+
+gw -> pay : PUT /payments/{payment_id}/\n{status: "COMPLETED"}
+activate pay
+
+pay -> paydb : UPDATE Payment\nSET status = COMPLETED
+paydb --> pay : Updated
+
+pay -> mq : Publish event\nexchange: "bookstore"\nrouting_key: "payment.completed"\n{payment_id, order_id, amount, status}
+
+pay --> gw : 200 {payment_id, status: "COMPLETED"}
+deactivate pay
+
+gw --> staff : Show payment updated
+deactivate gw
+
+== Update Order Status ==
+
+staff -> gw : PUT /orders/{order_id}/\n{status: "PAID"}
+activate gw
+
+gw -> order : PUT /orders/{order_id}/\n{status: "PAID"}
+activate order
+
+order -> orderdb : UPDATE Order\nSET status = PAID
+orderdb --> order : Updated
+
+order -> mq : Publish event\nexchange: "bookstore"\nrouting_key: "order.status_changed"\n{order_id, status: "PAID"}
+
+order --> gw : 200 {order_id, status: "PAID"}
+deactivate order
+
+gw --> staff : Show order status updated
+deactivate gw
+
+note over order
+  Order Status Flow:
+  PENDING → CONFIRMED → PAID
+  → SHIPPING → COMPLETED
+  (or CANCELLED at any step)
+end note
+
+@enduml
+
+
+@startuml 07_Shipping_Flow
+title Sequence Diagram - Shipping & Delivery Flow
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 10
+
+actor "Staff/Admin" as staff
+participant "API Gateway\n:8000" as gw
+participant "Order Service\n:8007" as order
+participant "Shipping Service\n:8009" as ship
+queue "RabbitMQ" as mq
+database "Order DB" as orderdb
+database "Ship DB" as shipdb
+
+== Ship Order ==
+
+staff -> gw : PUT /shipments/{shipment_id}/\n{status: "SHIPPED"}
+activate gw
+
+gw -> ship : PUT /shipments/{shipment_id}/\n{status: "SHIPPED"}
+activate ship
+
+ship -> shipdb : UPDATE Shipment\nSET status = SHIPPED
+shipdb --> ship : Updated
+
+ship -> mq : Publish event\nexchange: "bookstore"\nrouting_key: "shipment.shipped"\n{shipment_id, order_id, tracking_number}
+
+ship --> gw : 200 {shipment_id, tracking_number,\nstatus: "SHIPPED"}
+deactivate ship
+
+gw --> staff : Show shipment updated
+deactivate gw
+
+== Update Order to SHIPPING ==
+
+staff -> gw : PUT /orders/{order_id}/\n{status: "SHIPPING"}
+activate gw
+
+gw -> order : PUT /orders/{order_id}/\n{status: "SHIPPING"}
+activate order
+order -> orderdb : UPDATE Order SET status = SHIPPING
+order -> mq : Publish "order.status_changed"
+order --> gw : 200 {status: "SHIPPING"}
+deactivate order
+
+gw --> staff : Order status updated
+deactivate gw
+
+== Delivery Confirmation ==
+
+staff -> gw : PUT /shipments/{shipment_id}/\n{status: "DELIVERED"}
+activate gw
+
+gw -> ship : PUT /shipments/{shipment_id}/\n{status: "DELIVERED"}
+activate ship
+ship -> shipdb : UPDATE Shipment\nSET status = DELIVERED
+ship --> gw : 200 {status: "DELIVERED"}
+deactivate ship
+
+gw --> staff : Shipment delivered
+deactivate gw
+
+staff -> gw : PUT /orders/{order_id}/\n{status: "COMPLETED"}
+activate gw
+gw -> order : PUT /orders/{order_id}/\n{status: "COMPLETED"}
+activate order
+order -> orderdb : UPDATE Order SET status = COMPLETED
+order -> mq : Publish "order.status_changed"
+order --> gw : 200 {status: "COMPLETED"}
+deactivate order
+gw --> staff : Order completed
+deactivate gw
+
+note over ship
+  Shipment Status Flow:
+  RESERVED → PENDING → SHIPPED → DELIVERED
+  (or CANCELLED)
+end note
+
+@enduml
+
+
+@startuml 08_Review_Rating
+title Sequence Diagram - Book Review & Rating
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 10
+
+actor "Customer" as user
+participant "API Gateway\n:8000" as gw
+participant "Comment-Rate\nService :8010" as review
+database "Review DB" as reviewdb
+
+== Submit Review ==
+
+user -> gw : POST /reviews/book/{book_id}/\n{customer_id, rating, comment}
+activate gw
+
+gw -> review : POST /reviews/\n{book_id, customer_id, rating, comment}
+activate review
+
+review -> reviewdb : SELECT Review\nWHERE book_id AND customer_id
+reviewdb --> review : Check existing
+
+alt Review exists (update)
+    review -> reviewdb : UPDATE Review\nSET rating, comment
+    reviewdb --> review : Updated
+    review --> gw : 200 {review updated}
+else New review
+    review -> reviewdb : INSERT Review\n(book_id, customer_id, rating, comment)
+    reviewdb --> review : Created
+    review --> gw : 201 {review_id, rating, comment}
+end
+deactivate review
+
+gw --> user : Redirect to book reviews page
+deactivate gw
+
+== Get Book Reviews with Average Rating ==
+
+user -> gw : GET /reviews/book/{book_id}/
+activate gw
+
+gw -> review : GET /reviews/book/{book_id}/
+activate review
+review -> reviewdb : SELECT * FROM Review\nWHERE book_id\n+ AVG(rating)
+reviewdb --> review : Reviews list + average
+review --> gw : 200 {book_id, average_rating,\nreview_count, reviews: [...]}
+deactivate review
+
+gw --> user : Render reviews page
+deactivate gw
+
+@enduml
+
+
+@startuml 09_Recommendations
+title Sequence Diagram - Book Recommendations
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 10
+
+actor "Customer" as user
+participant "API Gateway\n:8000" as gw
+participant "Recommender AI\nService :8011" as rec
+participant "Comment-Rate\nService :8010" as review
+participant "Book Service\n:8002" as book
+database "Review DB" as reviewdb
+database "Book DB" as bookdb
+
+user -> gw : GET /recommendations/{customer_id}/
+activate gw
+
+gw -> rec : GET /recommendations/{customer_id}/
+activate rec
+
+== Get Top Rated Books ==
+
+rec -> review : GET /reviews/top-rated/?limit=10
+activate review
+review -> reviewdb : SELECT book_id,\nAVG(rating) as avg_rating\nGROUP BY book_id\nORDER BY avg_rating DESC\nLIMIT 10
+reviewdb --> review : Top rated book IDs
+review --> rec : 200 {top_rated: [{book_id, avg_rating}]}
+deactivate review
+
+alt Sufficient ratings available
+    loop For each recommended book_id
+        rec -> book : GET /books/{book_id}/
+        activate book
+        book -> bookdb : SELECT Book WHERE id
+        bookdb --> book : Book data
+        book --> rec : 200 {id, title, author, price, ...}
+        deactivate book
+    end
+    rec -> rec : Combine book details\nwith ratings data
+else Insufficient ratings (fallback)
+    rec -> book : GET /books/
+    activate book
+    book -> bookdb : SELECT * FROM Book\nORDER BY id DESC
+    bookdb --> book : Latest books
+    book --> rec : 200 [latest books]
+    deactivate book
+    rec -> rec : Use latest books\nas recommendations
+end
+
+rec --> gw : 200 {customer_id, recommendations:\n[{book, avg_rating}]}
+deactivate rec
+
+gw --> user : Render recommendations page
+deactivate gw
+
+@enduml
+
+
+@startuml 10_Full_Purchase_Flow
+title Sequence Diagram - Complete Purchase Flow (End-to-End)
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 10
+
+actor "Customer" as user
+participant "API Gateway" as gw
+participant "Auth Service" as auth
+participant "Book Service" as book
+participant "Cart Service" as cart
+participant "Order Service" as order
+participant "Payment Service" as pay
+participant "Shipping Service" as ship
+queue "RabbitMQ" as mq
+
+== 1. Authentication ==
+
+user -> gw : POST /auth/login/
+gw -> auth : POST /auth/login/
+auth --> gw : JWT token
+gw -> gw : Store in session
+gw --> user : Dashboard
+
+== 2. Browse & Select Books ==
+
+user -> gw : GET /books/
+gw -> book : GET /books/
+book --> gw : Book catalog
+gw --> user : Book list page
+
+== 3. Add to Cart ==
+
+user -> gw : Add book to cart
+gw -> cart : POST /cart-items/
+cart -> book : Validate book exists
+book --> cart : Book valid
+cart --> gw : Item added
+gw --> user : Cart updated
+
+user -> gw : Add another book
+gw -> cart : POST /cart-items/
+cart -> book : Validate book
+book --> cart : Valid
+cart --> gw : Item added
+gw --> user : Cart updated
+
+== 4. Place Order (Saga) ==
+
+user -> gw : POST /orders/create/
+gw -> order : POST /orders/
+
+order -> cart : GET /carts/{customer_id}/
+cart --> order : Cart items
+
+order -> book : GET /books/{id}/ (for each item)
+book --> order : Book prices
+
+order -> pay : POST /payments/ (RESERVE)
+pay --> order : Payment reserved
+
+order -> ship : POST /shipments/ (RESERVE)
+ship --> order : Shipment reserved
+
+order -> order : Create Order (PENDING)
+order -> mq : "order.created"
+
+order --> gw : Order confirmation
+gw --> user : Order success page
+
+== 5. Payment Processing ==
+
+pay -> pay : Process payment
+pay -> mq : "payment.completed"
+
+== 6. Shipping ==
+
+ship -> ship : Ship order
+ship -> mq : "shipment.shipped"
+
+== 7. Delivery ==
+
+ship -> ship : Mark delivered
+order -> order : Status = COMPLETED
+order -> mq : "order.status_changed"
+
+@enduml
+
+
+@startuml 11_System_Overview
+title Sequence Diagram - System Architecture Overview (Service Interactions)
+skinparam backgroundColor #FEFEFE
+skinparam sequenceArrowThickness 2
+skinparam roundcorner 10
+
+actor "User/Browser" as user
+box "API Layer" #LightBlue
+    participant "API Gateway\n:8000" as gw
+end box
+
+box "Core Services" #LightGreen
+    participant "Auth Service\n:8012" as auth
+    participant "Book Service\n:8002" as book
+    participant "Customer Service\n:8001" as cust
+    participant "Catalog Service\n:8006" as catalog
+end box
+
+box "Transaction Services" #LightYellow
+    participant "Cart Service\n:8003" as cart
+    participant "Order Service\n:8007" as order
+    participant "Payment Service\n:8008" as pay
+    participant "Shipping Service\n:8009" as ship
+end box
+
+box "Analytics Services" #LightCoral
+    participant "Comment-Rate\n:8010" as review
+    participant "Recommender AI\n:8011" as rec
+end box
+
+box "Management Services" #Lavender
+    participant "Staff Service\n:8004" as staff
+    participant "Manager Service\n:8005" as mgr
+end box
+
+queue "RabbitMQ\n:5673" as mq
+
+== All requests go through API Gateway ==
+user -> gw : HTTP Request
+gw -> auth : JWT Verification\n(every protected request)
+auth --> gw : Token validation
+
+== Service Dependencies ==
+gw -> book : CRUD Books
+gw -> cust : CRUD Customers
+cust -> cart : Auto-create cart on register
+gw -> cart : Cart operations
+cart -> book : Validate book exists
+gw -> catalog : CRUD Categories
+
+== Order Saga ==
+gw -> order : Create/Manage orders
+order -> cart : Get cart items
+order -> book : Get book prices
+order -> pay : Reserve/Process payment
+order -> ship : Reserve/Ship
+
+== Events ==
+order -> mq : order.created\norder.status_changed
+pay -> mq : payment.completed
+ship -> mq : shipment.shipped
+
+== Analytics ==
+gw -> review : Reviews & ratings
+gw -> rec : Get recommendations
+rec -> review : Top rated books
+rec -> book : Book details
+
+== Management ==
+gw -> staff : Staff CRUD
+gw -> mgr : Manager CRUD
+
+@enduml

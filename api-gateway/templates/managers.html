@@ -2,9 +2,11 @@
 {% block title %}Managers{% endblock %}
 {% block content %}
 <h1>Manager List</h1>
+{% if user_role == 'ADMIN' %}
 <p style="margin-bottom: 15px;">
     <a href="/managers/create/" class="btn btn-success">+ Add Manager</a>
 </p>
+{% endif %}
 <table>
     <tr>
         <th>ID</th><th>Name</th><th>Email</th><th>Department</th><th>Actions</th>
@@ -17,11 +19,13 @@
         <td>{{ m.department }}</td>
         <td>
             <div class="actions">
+                {% if user_role == 'ADMIN' %}
                 <a href="/managers/{{ m.id }}/edit/" class="btn btn-sm btn-warning">Edit</a>
                 <form method="post" action="/managers/{{ m.id }}/delete/" style="display: inline;">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this manager?')">Delete</button>
                 </form>
+                {% endif %}
             </div>
         </td>
     </tr>

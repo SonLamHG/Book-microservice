@@ -690,7 +690,7 @@ def auth_login(request):
                 request.session['jwt_token'] = result['token']
                 request.session['user_data'] = result['user']
 
-                # Look up linked customer profile
+                # Look up linked profile based on role
                 if result['user'].get('role') == 'CUSTOMER':
                     try:
                         customers = requests.get(
@@ -699,6 +699,28 @@ def auth_login(request):
                         for c in customers:
                             if c.get('auth_user_id') == result['user']['id'] or c.get('email') == result['user'].get('email'):
                                 request.session['customer_id'] = c['id']
+                                break
+                    except Exception:
+                        pass
+                elif result['user'].get('role') == 'STAFF':
+                    try:
+                        staff_list = requests.get(
+                            f"{STAFF_SERVICE_URL}/staff/", timeout=5
+                        ).json()
+                        for s in staff_list:
+                            if s.get('auth_user_id') == result['user']['id'] or s.get('email') == result['user'].get('email'):
+                                request.session['staff_id'] = s['id']
+                                break
+                    except Exception:
+                        pass
+                elif result['user'].get('role') == 'MANAGER':
+                    try:
+                        manager_list = requests.get(
+                            f"{MANAGER_SERVICE_URL}/managers/", timeout=5
+                        ).json()
+                        for m in manager_list:
+                            if m.get('auth_user_id') == result['user']['id'] or m.get('email') == result['user'].get('email'):
+                                request.session['manager_id'] = m['id']
                                 break
                     except Exception:
                         pass
@@ -727,7 +749,7 @@ def auth_register(request):
                 request.session['jwt_token'] = result['token']
                 request.session['user_data'] = result['user']
 
-                # Auto-create customer profile if role is CUSTOMER
+                # Auto-create profile based on role
                 if data['role'] == 'CUSTOMER':
                     try:
                         cr = requests.post(
@@ -741,6 +763,36 @@ def auth_register(request):
                         )
                         if cr.status_code == 201:
                             request.session['customer_id'] = cr.json()['id']
+                    except Exception:
+                        pass
+                elif data['role'] == 'STAFF':
+                    try:
+                        sr = requests.post(
+                            f"{STAFF_SERVICE_URL}/staff/",
+                            json={
+                                'name': data['username'],
+                                'email': data['email'],
+                                'auth_user_id': result['user']['id'],
+                            },
+                            timeout=5,
+                        )
+                        if sr.status_code == 201:
+                            request.session['staff_id'] = sr.json()['id']
+                    except Exception:
+                        pass
+                elif data['role'] == 'MANAGER':
+                    try:
+                        mr = requests.post(
+                            f"{MANAGER_SERVICE_URL}/managers/",
+                            json={
+                                'name': data['username'],
+                                'email': data['email'],
+                                'auth_user_id': result['user']['id'],
+                            },
+                            timeout=5,
+                        )
+                        if mr.status_code == 201:
+                            request.session['manager_id'] = mr.json()['id']
                     except Exception:
                         pass
 
