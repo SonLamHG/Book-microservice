@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Category
 from .serializers import CategorySerializer
+from .messaging import publish_event
 
 
 class CategoryListCreate(APIView):
@@ -15,6 +16,7 @@ class CategoryListCreate(APIView):
         serializer = CategorySerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
+            publish_event('category.created', {'category_id': serializer.data['id'], 'name': serializer.data['name']})
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -36,6 +38,7 @@ class CategoryDetail(APIView):
         serializer = CategorySerializer(category, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
+            publish_event('category.updated', {'category_id': pk, 'name': serializer.data['name']})
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -44,7 +47,9 @@ class CategoryDetail(APIView):
             category = Category.objects.get(pk=pk)
         except Category.DoesNotExist:
             return Response({"error": "Category not found"}, status=status.HTTP_404_NOT_FOUND)
+        name = category.name
         category.delete()
+        publish_event('category.deleted', {'category_id': pk, 'name': name})
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

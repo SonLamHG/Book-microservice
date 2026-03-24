@@ -7,7 +7,11 @@ from .serializers import BookSerializer
 
 class BookListCreate(APIView):
     def get(self, request):
-        books = Book.objects.all()
+        category_id = request.query_params.get('category_id')
+        if category_id:
+            books = Book.objects.filter(category_id=category_id)
+        else:
+            books = Book.objects.all()
         serializer = BookSerializer(books, many=True)
         return Response(serializer.data)
 

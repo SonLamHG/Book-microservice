@@ -46,6 +46,8 @@ services:
       - "8006:8000"
     volumes:
       - catalog_data:/app/data
+    depends_on:
+      - rabbitmq
 
   book-service:
     build: ./book-service
@@ -53,6 +55,8 @@ services:
       - "8002:8000"
     volumes:
       - book_data:/app/data
+    depends_on:
+      - rabbitmq
 
   cart-service:
     build: ./cart-service

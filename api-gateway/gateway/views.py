@@ -69,8 +69,21 @@ def home(request):
 # ---- Book Management ----
 
 def book_list(request):
-    books = _fetch_books()
     customers = _fetch_customers()
+    categories = _fetch_json(f"{CATALOG_SERVICE_URL}/categories/")
+    cat_map = {c['id']: c['name'] for c in categories} if isinstance(categories, list) else {}
+    selected_category = request.GET.get('category', '').strip()
+    if selected_category:
+        try:
+            r = requests.get(f"{BOOK_SERVICE_URL}/books/", params={"category_id": selected_category}, timeout=5)
+            books = r.json() if r.status_code == 200 else []
+        except Exception:
+            books = []
+    else:
+        books = _fetch_books()
+    if isinstance(books, list):
+        for b in books:
+            b['category_name'] = cat_map.get(b.get('category_id'), '')
     search = request.GET.get('search', '').strip()
     if search and isinstance(books, list):
         books = [b for b in books if
@@ -81,6 +94,8 @@ def book_list(request):
     return render(request, 'books.html', {
         'books': books,
         'customers': customers,
+        'categories': categories,
+        'selected_category': selected_category,
         'search': search,
         'page': page,
         'total_pages': total_pages,
@@ -89,6 +104,7 @@ def book_list(request):
 
 def book_create(request):
     if request.method == 'POST':
+        category_id = request.POST.get('category_id')
         data = {
             'title': request.POST.get('title'),
             'author': request.POST.get('author'),
@@ -96,6 +112,7 @@ def book_create(request):
             'stock': request.POST.get('stock'),
             'isbn': request.POST.get('isbn', ''),
             'description': request.POST.get('description', ''),
+            'category_id': int(category_id) if category_id else None,
         }
         try:
             r = requests.post(f"{BOOK_SERVICE_URL}/books/", json=data, timeout=5)
@@ -106,11 +123,13 @@ def book_create(request):
         except Exception:
             _flash(request, 'Book service unavailable.', 'danger')
         return redirect('book_list')
-    return render(request, 'book_form.html')
+    categories = _fetch_json(f"{CATALOG_SERVICE_URL}/categories/")
+    return render(request, 'book_form.html', {'categories': categories})
 
 
 def book_edit(request, pk):
     if request.method == 'POST':
+        category_id = request.POST.get('category_id')
         data = {
             'title': request.POST.get('title'),
             'author': request.POST.get('author'),
@@ -118,6 +137,7 @@ def book_edit(request, pk):
             'stock': request.POST.get('stock'),
             'isbn': request.POST.get('isbn', ''),
             'description': request.POST.get('description', ''),
+            'category_id': int(category_id) if category_id else None,
         }
         try:
             r = requests.put(f"{BOOK_SERVICE_URL}/books/{pk}/", json=data, timeout=5)
@@ -139,7 +159,8 @@ def book_edit(request, pk):
     if not book_data:
         _flash(request, 'Book not found.', 'danger')
         return redirect('book_list')
-    return render(request, 'book_form.html', {'edit': True, 'item': book_data})
+    categories = _fetch_json(f"{CATALOG_SERVICE_URL}/categories/")
+    return render(request, 'book_form.html', {'edit': True, 'item': book_data, 'categories': categories})
 
 
 def book_delete(request, pk):
@@ -664,10 +685,15 @@ def category_edit(request, pk):
 
 def category_delete(request, pk):
     if request.method == 'POST':
+        associated_books = _fetch_json(f"{BOOK_SERVICE_URL}/books/?category_id={pk}")
+        book_count = len(associated_books) if isinstance(associated_books, list) else 0
         try:
             r = requests.delete(f"{CATALOG_SERVICE_URL}/categories/{pk}/", timeout=5)
             if r.status_code == 204:
-                _flash(request, 'Category deleted.')
+                if book_count > 0:
+                    _flash(request, f'Category deleted. {book_count} book(s) were uncategorized.')
+                else:
+                    _flash(request, 'Category deleted.')
             else:
                 _flash(request, 'Failed to delete category.', 'danger')
         except Exception:
