@@ -1,86 +1,143 @@
 {% extends 'base.html' %}
 {% block title %}Books{% endblock %}
 {% block content %}
+<style>
+    .books-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 18px;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .books-toolbar .filter-form {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex: 1;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+    .books-toolbar .filter-form select,
+    .books-toolbar .filter-form input[type="text"] {
+        padding: 8px 12px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    .books-toolbar .filter-form select { min-width: 160px; }
+    .books-toolbar .filter-form input[type="text"] { min-width: 200px; flex: 1; max-width: 320px; }
+
+    .books-table { width: 100%; border-collapse: collapse; background: white; table-layout: fixed; }
+    .books-table th, .books-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #ddd; overflow: hidden; text-overflow: ellipsis; }
+    .books-table th { background: #2c3e50; color: white; white-space: nowrap; }
+    .books-table .col-id { width: 50px; text-align: center; }
+    .books-table .col-title { width: 24%; }
+    .books-table .col-author { width: 16%; }
+    .books-table .col-category { width: 14%; }
+    .books-table .col-price { width: 10%; text-align: right; }
+    .books-table .col-stock { width: 7%; text-align: center; }
+    .books-table .col-actions { width: auto; }
+    .books-table td.col-price { text-align: right; white-space: nowrap; }
+    .books-table td.col-stock { text-align: center; }
+    .books-table td.col-id { text-align: center; }
+
+    .book-actions { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+    .book-actions form { display: inline-flex; gap: 4px; align-items: center; margin: 0; }
+    .book-actions select { padding: 3px 4px; font-size: 12px; width: 110px; border: 1px solid #ccc; border-radius: 3px; }
+</style>
+
 <h1>Book List</h1>
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+
+<div class="books-toolbar">
     {% if user_role == 'STAFF' or user_role == 'MANAGER' or user_role == 'ADMIN' %}
     <a href="/books/create/" class="btn btn-success">+ Add New Book</a>
-    {% else %}
-    <span></span>
     {% endif %}
-    <form method="get" class="search-bar" style="margin: 0; flex: 1; margin-left: 20px; display: flex; gap: 8px; align-items: center;">
-        <select name="category" onchange="this.form.submit()" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc;">
+    <form method="get" class="filter-form">
+        <select name="category" onchange="this.form.submit()">
             <option value="">All Categories</option>
             {% for c in categories %}
             <option value="{{ c.id }}" {% if selected_category == c.id|stringformat:"d" %}selected{% endif %}>{{ c.name }}</option>
             {% endfor %}
         </select>
-        <input type="text" name="search" value="{{ search }}" placeholder="Search by title, author, ISBN...">
+        <input type="text" name="search" value="{{ search }}" placeholder="Search title, author, ISBN...">
         <button type="submit" class="btn">Search</button>
         {% if search or selected_category %}<a href="/books/" class="btn btn-warning">Clear</a>{% endif %}
     </form>
 </div>
-<table>
-    <tr>
-        <th>ID</th><th>Title</th><th>Author</th><th>Category</th><th>Price</th><th>Stock</th><th>Actions</th>
-    </tr>
+
+<table class="books-table">
+    <thead>
+        <tr>
+            <th class="col-id">ID</th>
+            <th class="col-title">Title</th>
+            <th class="col-author">Author</th>
+            <th class="col-category">Category</th>
+            <th class="col-price">Price</th>
+            <th class="col-stock">Stock</th>
+            <th class="col-actions">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
     {% for book in books %}
-    <tr>
-        <td>{{ book.id }}</td>
-        <td>{{ book.title }}</td>
-        <td>{{ book.author }}</td>
-        <td>{{ book.category_name|default:"-" }}</td>
-        <td>${{ book.price }}</td>
-        <td>{{ book.stock }}</td>
-        <td>
-            <div class="actions">
-                <a href="/reviews/book/{{ book.id }}/" class="btn btn-sm">Reviews</a>
-                {% if customer_id %}
-                <form method="post" action="/cart/add/" style="display: inline;">
-                    {% csrf_token %}
-                    <input type="hidden" name="book_id" value="{{ book.id }}">
-                    <input type="hidden" name="quantity" value="1">
-                    <input type="hidden" name="redirect_to" value="books">
-                    <input type="hidden" name="customer_id" value="{{ customer_id }}">
-                    <button type="submit" class="btn btn-sm btn-success">+ Cart</button>
-                </form>
-                {% elif customers %}
-                <form method="post" action="/cart/add/" style="display: flex; gap: 4px; align-items: center;">
-                    {% csrf_token %}
-                    <input type="hidden" name="book_id" value="{{ book.id }}">
-                    <input type="hidden" name="quantity" value="1">
-                    <input type="hidden" name="redirect_to" value="books">
-                    <select name="customer_id" style="padding: 4px; font-size: 12px; width: 120px;" required>
-                        <option value="">Customer</option>
-                        {% for c in customers %}
-                        <option value="{{ c.id }}">{{ c.name }}</option>
-                        {% endfor %}
-                    </select>
-                    <button type="submit" class="btn btn-sm btn-success">+ Cart</button>
-                </form>
-                {% endif %}
-                {% if user_role == 'STAFF' or user_role == 'MANAGER' or user_role == 'ADMIN' %}
-                <a href="/books/{{ book.id }}/edit/" class="btn btn-sm btn-warning">Edit</a>
-                <form method="post" action="/books/{{ book.id }}/delete/" style="display: inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this book?')">Delete</button>
-                </form>
-                {% endif %}
-            </div>
-        </td>
-    </tr>
+        <tr>
+            <td class="col-id">{{ book.id }}</td>
+            <td class="col-title" title="{{ book.title }}">{{ book.title }}</td>
+            <td class="col-author" title="{{ book.author }}">{{ book.author }}</td>
+            <td class="col-category">{{ book.category_name|default:"-" }}</td>
+            <td class="col-price">{{ book.price|floatformat:0 }}&#8363;</td>
+            <td class="col-stock">{{ book.stock }}</td>
+            <td class="col-actions">
+                <div class="book-actions">
+                    <a href="/reviews/book/{{ book.id }}/" class="btn btn-sm">Reviews</a>
+                    {% if customer_id %}
+                    <form method="post" action="/cart/add/">
+                        {% csrf_token %}
+                        <input type="hidden" name="book_id" value="{{ book.id }}">
+                        <input type="hidden" name="quantity" value="1">
+                        <input type="hidden" name="redirect_to" value="books">
+                        <input type="hidden" name="customer_id" value="{{ customer_id }}">
+                        <button type="submit" class="btn btn-sm btn-success">+ Cart</button>
+                    </form>
+                    {% elif customers %}
+                    <form method="post" action="/cart/add/">
+                        {% csrf_token %}
+                        <input type="hidden" name="book_id" value="{{ book.id }}">
+                        <input type="hidden" name="quantity" value="1">
+                        <input type="hidden" name="redirect_to" value="books">
+                        <select name="customer_id" required>
+                            <option value="">Customer</option>
+                            {% for c in customers %}
+                            <option value="{{ c.id }}">{{ c.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-success">+ Cart</button>
+                    </form>
+                    {% endif %}
+                    {% if user_role == 'STAFF' or user_role == 'MANAGER' or user_role == 'ADMIN' %}
+                    <a href="/books/{{ book.id }}/edit/" class="btn btn-sm btn-warning">Edit</a>
+                    <form method="post" action="/books/{{ book.id }}/delete/">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this book?')">Delete</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </td>
+        </tr>
     {% empty %}
-    <tr><td colspan="7">No books found.</td></tr>
+        <tr><td colspan="7" style="text-align: center; padding: 20px; color: #7f8c8d;">No books found.</td></tr>
     {% endfor %}
+    </tbody>
 </table>
+
 {% if total_pages > 1 %}
 <div class="pagination">
     {% if page > 1 %}
-        <a href="?page={{ page|add:"-1" }}{% if search %}&search={{ search }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}" class="btn btn-sm">Previous</a>
+        <a href="?page={{ page|add:"-1" }}{% if search %}&search={{ search }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}" class="btn btn-sm">&laquo; Previous</a>
     {% endif %}
-    <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
+    <span class="page-info">Page {{ page }} / {{ total_pages }}</span>
     {% if page < total_pages %}
-        <a href="?page={{ page|add:"1" }}{% if search %}&search={{ search }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}" class="btn btn-sm">Next</a>
+        <a href="?page={{ page|add:"1" }}{% if search %}&search={{ search }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}" class="btn btn-sm">Next &raquo;</a>
     {% endif %}
 </div>
 {% endif %}
