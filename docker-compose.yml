@@ -106,14 +106,33 @@ services:
     volumes:
       - comment_rate_data:/app/data
 
+  behavior-ai-service:
+    build: ./behavior-ai-service
+    ports:
+      - "8013:8000"
+    volumes:
+      - behavior_data:/app/data
+    depends_on:
+      - customer-service
+      - cart-service
+      - order-service
+      - book-service
+      - catalog-service
+      - comment-rate-service
+
   recommender-ai-service:
     build: ./recommender-ai-service
     ports:
       - "8011:8000"
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
     volumes:
       - recommender_data:/app/data
     depends_on:
+      - behavior-ai-service
       - book-service
+      - catalog-service
       - comment-rate-service
 
   auth-service:
@@ -142,6 +161,7 @@ services:
       - pay-service
       - ship-service
       - comment-rate-service
+      - behavior-ai-service
       - recommender-ai-service
       - auth-service
 
@@ -157,6 +177,7 @@ volumes:
   pay_data:
   ship_data:
   comment_rate_data:
+  behavior_data:
   recommender_data:
   auth_data:
   gateway_data:

@@ -13,31 +13,31 @@ echo ""
 echo "[1/7] Seeding auth-service (users)..."
 docker-compose exec -T auth-service python manage.py shell <<'PYEOF'
 from app.models import User
+from django.db import connection
 
 users = [
-    {"username": "admin",      "email": "admin@bookstore.vn",      "role": "ADMIN",    "password": "admin123"},
-    {"username": "manager1",   "email": "manager1@bookstore.vn",   "role": "MANAGER",  "password": "manager123"},
-    {"username": "staff1",     "email": "staff1@bookstore.vn",     "role": "STAFF",    "password": "staff123"},
-    {"username": "staff2",     "email": "staff2@bookstore.vn",     "role": "STAFF",    "password": "staff123"},
-    {"username": "nguyenvana", "email": "nguyenvana@gmail.com",    "role": "CUSTOMER", "password": "customer123"},
-    {"username": "tranthib",   "email": "tranthib@gmail.com",      "role": "CUSTOMER", "password": "customer123"},
-    {"username": "levanc",     "email": "levanc@gmail.com",        "role": "CUSTOMER", "password": "customer123"},
-    {"username": "phamthid",   "email": "phamthid@gmail.com",      "role": "CUSTOMER", "password": "customer123"},
-    {"username": "hoange",     "email": "hoange@gmail.com",        "role": "CUSTOMER", "password": "customer123"},
+    {"username": "admin",    "email": "admin@gmail.com",    "role": "ADMIN",    "password": "123456"},
+    {"username": "staff",    "email": "staff@gmail.com",    "role": "STAFF",    "password": "123456"},
 ]
 
-created = 0
-for u in users:
-    obj, was_created = User.objects.get_or_create(
-        username=u["username"],
-        defaults={"email": u["email"], "role": u["role"], "password": ""}
-    )
-    if was_created:
-        obj.set_password(u["password"])
-        obj.save()
-        created += 1
+for i in range(1, 11):
+    users.append({
+        "username": f"customer{i}",
+        "email": f"customer{i}@gmail.com",
+        "role": "CUSTOMER",
+        "password": "123456",
+    })
 
-print(f"Auth: {created} users created ({len(users)} total defined)")
+User.objects.all().delete()
+with connection.cursor() as cursor:
+    cursor.execute("DELETE FROM sqlite_sequence WHERE name='app_user'")
+
+for u in users:
+    obj = User(username=u["username"], email=u["email"], role=u["role"])
+    obj.set_password(u["password"])
+    obj.save()
+
+print(f"Auth: seeded {len(users)} users")
 PYEOF
 
 # -------------------------------------------------------
@@ -109,7 +109,8 @@ echo ""
 echo "=== All services seeded successfully! ==="
 echo ""
 echo "Test accounts:"
-echo "  Admin:    admin / admin123"
-echo "  Manager:  manager1 / manager123"
-echo "  Staff:    staff1 / staff123"
-echo "  Customer: nguyenvana / customer123"
+echo "  Admin:    admin / 123456"
+echo "  Staff:    staff / 123456"
+for i in $(seq 1 10); do
+  echo "  Customer: customer${i} / 123456"
+done

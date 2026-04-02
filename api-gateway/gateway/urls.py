@@ -26,6 +26,7 @@ urlpatterns = [
     path('reviews/add/', views.add_review, name='add_review'),
     # Recommendations
     path('recommendations/<int:customer_id>/', views.recommendations, name='recommendations'),
+    path('recommendations/<int:customer_id>/ask/', views.recommendations_ask, name='recommendations_ask'),
     # Staff
     path('staff/', views.staff_list, name='staff_list'),
     path('staff/create/', views.staff_create, name='staff_create'),

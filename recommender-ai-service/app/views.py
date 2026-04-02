@@ -1,68 +1,28 @@
-from rest_framework.views import APIView
+from django.http import JsonResponse
 from rest_framework.response import Response
-from rest_framework import status
-import requests
+from rest_framework.views import APIView
 
-BOOK_SERVICE_URL = "http://book-service:8000"
-COMMENT_RATE_SERVICE_URL = "http://comment-rate-service:8000"
+from .services import AdvisorService, DEFAULT_PROMPT
 
 
 class Recommendations(APIView):
-    """
-    Simple recommendation engine:
-    - Get top-rated books from comment-rate-service
-    - Fetch book details from book-service
-    - Return recommended books
-    """
     def get(self, request, customer_id):
         limit = int(request.query_params.get('limit', 5))
+        user_prompt = request.query_params.get('prompt') or DEFAULT_PROMPT
+        service = AdvisorService()
+        return Response(service.recommend(customer_id, user_prompt=user_prompt, limit=limit))
 
-        # Get top rated book IDs from comment-rate-service
-        try:
-            r = requests.get(
-                f"{COMMENT_RATE_SERVICE_URL}/reviews/top-rated/",
-                params={"limit": limit},
-                timeout=5,
-            )
-            top_rated = r.json() if r.status_code == 200 else []
-        except requests.exceptions.RequestException:
-            top_rated = []
 
-        recommended_books = []
-        for item in top_rated:
-            try:
-                br = requests.get(
-                    f"{BOOK_SERVICE_URL}/books/{item['book_id']}/",
-                    timeout=5,
-                )
-                if br.status_code == 200:
-                    book = br.json()
-                    book['avg_rating'] = item.get('avg_rating')
-                    recommended_books.append(book)
-            except requests.exceptions.RequestException:
-                continue
-
-        # If not enough rated books, fill with latest books
-        if len(recommended_books) < limit:
-            try:
-                br = requests.get(f"{BOOK_SERVICE_URL}/books/", timeout=5)
-                if br.status_code == 200:
-                    all_books = br.json()
-                    existing_ids = {b['id'] for b in recommended_books}
-                    for book in all_books:
-                        if book['id'] not in existing_ids:
-                            recommended_books.append(book)
-                        if len(recommended_books) >= limit:
-                            break
-            except requests.exceptions.RequestException:
-                pass
-
-        return Response({
-            "customer_id": customer_id,
-            "recommendations": recommended_books[:limit],
-        })
+class AdvisorRecommendations(APIView):
+    def post(self, request):
+        customer_id = request.data.get('customer_id')
+        if customer_id is None:
+            return Response({'error': 'customer_id is required'}, status=400)
+        limit = int(request.data.get('limit', 3))
+        user_prompt = request.data.get('user_prompt') or DEFAULT_PROMPT
+        service = AdvisorService()
+        return Response(service.recommend(int(customer_id), user_prompt=user_prompt, limit=limit))
 
 
 def health_check(request):
-    from django.http import JsonResponse
     return JsonResponse({'status': 'healthy', 'service': 'recommender-ai-service'})
