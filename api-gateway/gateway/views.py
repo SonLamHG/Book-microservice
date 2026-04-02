@@ -30,6 +30,14 @@ def _fetch_json(url, timeout=5):
         return []
 
 
+def _post_json(url, payload, timeout=8):
+    try:
+        r = requests.post(url, json=payload, timeout=timeout)
+        return r.json() if r.status_code in (200, 201) else {}
+    except Exception:
+        return {}
+
+
 def _fetch_customers():
     return _fetch_json(f"{CUSTOMER_SERVICE_URL}/customers/")
 
@@ -477,18 +485,33 @@ def add_review(request):
 
 # ---- Recommendations ----
 
-def recommendations(request, customer_id):
-    try:
-        r = requests.get(
-            f"{RECOMMENDER_SERVICE_URL}/recommendations/{customer_id}/", timeout=5
-        )
-        data = r.json() if r.status_code == 200 else {}
-    except Exception:
-        data = {}
+def _render_recommendations(request, customer_id, user_prompt=None):
+    payload = {
+        'customer_id': customer_id,
+        'user_prompt': user_prompt or 'Suggest books for me based on my profile.',
+        'limit': 3,
+    }
+    data = _post_json(f"{RECOMMENDER_SERVICE_URL}/advisor/recommendations/", payload)
+    if not data:
+        data = _fetch_json(f"{RECOMMENDER_SERVICE_URL}/recommendations/{customer_id}/")
+        if not isinstance(data, dict):
+            data = {}
     return render(request, 'recommendations.html', {
         'data': data,
         'customer_id': customer_id,
+        'user_prompt': data.get('user_prompt', payload['user_prompt']) if isinstance(data, dict) else payload['user_prompt'],
     })
+
+
+def recommendations(request, customer_id):
+    return _render_recommendations(request, customer_id)
+
+
+def recommendations_ask(request, customer_id):
+    if request.method == 'POST':
+        user_prompt = request.POST.get('user_prompt', '').strip()
+        return _render_recommendations(request, customer_id, user_prompt=user_prompt)
+    return redirect('recommendations', customer_id=customer_id)
 
 
 # ---- Staff ----

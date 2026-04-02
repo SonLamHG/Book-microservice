@@ -1,26 +1,25 @@
 # Tai khoan test - Bookstore Microservice
 
 ## Admin
-| Username | Password | Role |
-|----------|----------|------|
-| admin | admin123 | ADMIN |
-
-## Manager
-| Username | Password | Role |
-|----------|----------|------|
-| manager1 | manager123 | MANAGER |
+| Username | Email | Password | Role |
+|----------|-------|----------|------|
+| admin | admin@gmail.com | 123456 | ADMIN |
 
 ## Staff
-| Username | Password | Role |
-|----------|----------|------|
-| staff1 | staff123 | STAFF |
-| staff2 | staff123 | STAFF |
+| Username | Email | Password | Role |
+|----------|-------|----------|------|
+| staff | staff@gmail.com | 123456 | STAFF |
 
-## Customer
-| Username | Password | Role |
-|----------|----------|------|
-| nguyenvana | customer123 | CUSTOMER |
-| tranthib | customer123 | CUSTOMER |
-| levanc | customer123 | CUSTOMER |
-| phamthid | customer123 | CUSTOMER |
-| hoange | customer123 | CUSTOMER |
+## Customers
+| Username | Email | Password | Role |
+|----------|-------|----------|------|
+| customer1 | customer1@gmail.com | 123456 | CUSTOMER |
+| customer2 | customer2@gmail.com | 123456 | CUSTOMER |
+| customer3 | customer3@gmail.com | 123456 | CUSTOMER |
+| customer4 | customer4@gmail.com | 123456 | CUSTOMER |
+| customer5 | customer5@gmail.com | 123456 | CUSTOMER |
+| customer6 | customer6@gmail.com | 123456 | CUSTOMER |
+| customer7 | customer7@gmail.com | 123456 | CUSTOMER |
+| customer8 | customer8@gmail.com | 123456 | CUSTOMER |
+| customer9 | customer9@gmail.com | 123456 | CUSTOMER |
+| customer10 | customer10@gmail.com | 123456 | CUSTOMER |
