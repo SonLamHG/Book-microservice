@@ -1,7 +1,7 @@
 import re
 import time
 import logging
-from collections import defaultdict
+from django.core.cache import cache
 from django.http import JsonResponse
 
 logger = logging.getLogger('gateway')
@@ -89,29 +89,38 @@ class LoggingMiddleware:
 
 
 class RateLimitMiddleware:
-    """Simple in-memory rate limiter: max 60 requests per minute per IP."""
+    """Redis-backed rate limiter: max 60 requests per minute per IP."""
 
     def __init__(self, get_response):
         self.get_response = get_response
-        self.requests = defaultdict(list)
         self.limit = 60
         self.window = 60  # seconds
 
     def __call__(self, request):
         ip = request.META.get('REMOTE_ADDR', '0.0.0.0')
+        cache_key = f'ratelimit:{ip}'
         now = time.time()
-        self.requests[ip] = [t for t in self.requests[ip] if now - t < self.window]
 
-        if len(self.requests[ip]) >= self.limit:
-            logger.warning("Rate limit exceeded for %s", ip)
-            return JsonResponse({'error': 'Rate limit exceeded. Try again later.'}, status=429)
+        try:
+            request_log = cache.get(cache_key, [])
+            request_log = [t for t in request_log if now - t < self.window]
 
-        self.requests[ip].append(now)
+            if len(request_log) >= self.limit:
+                logger.warning("Rate limit exceeded for %s", ip)
+                return JsonResponse({'error': 'Rate limit exceeded. Try again later.'}, status=429)
+
+            request_log.append(now)
+            cache.set(cache_key, request_log, self.window)
+        except Exception:
+            # If Redis is unavailable, allow request through
+            logger.warning("Redis unavailable for rate limiting, allowing request")
+
         return self.get_response(request)
 
 
 class JWTAuthMiddleware:
-    """Validates JWT token from session and enforces role-based access control."""
+    """Validates JWT token from session and enforces role-based access control.
+    Caches verified tokens in Redis to reduce auth-service load."""
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -127,6 +136,20 @@ class JWTAuthMiddleware:
             from django.shortcuts import redirect
             return redirect('/auth/login/')
 
+        # Check Redis cache for verified token
+        import hashlib
+        token_hash = hashlib.sha256(token.encode()).hexdigest()[:16]
+        cache_key = f'jwt:{token_hash}'
+
+        try:
+            cached_user = cache.get(cache_key)
+            if cached_user:
+                request.user_data = cached_user
+                # Skip to RBAC check
+                return self._check_rbac(request)
+        except Exception:
+            pass
+
         # Verify token via auth-service
         try:
             import requests as http_requests
@@ -137,6 +160,11 @@ class JWTAuthMiddleware:
             )
             if r.status_code == 200:
                 request.user_data = r.json().get('user', {})
+                # Cache verified token in Redis (TTL 5 minutes)
+                try:
+                    cache.set(cache_key, request.user_data, 300)
+                except Exception:
+                    pass
             else:
                 request.session.flush()
                 from django.shortcuts import redirect
@@ -146,7 +174,10 @@ class JWTAuthMiddleware:
             request.user_data = request.session.get('user_data', {})
             logger.warning("Auth service unavailable, using cached user data")
 
-        # Role-based access control
+        return self._check_rbac(request)
+
+    def _check_rbac(self, request):
+        """Role-based access control check."""
         user_role = getattr(request, 'user_data', {}).get('role', '')
         perm_key = _get_permission_key(request.path)
         if perm_key and perm_key in ROLE_PERMISSIONS:

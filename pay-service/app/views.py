@@ -34,26 +34,30 @@ class PaymentDetail(APIView):
         return Response(serializer.data)
 
     def put(self, request, pk):
+        from django.db import transaction
         try:
-            payment = Payment.objects.get(pk=pk)
+            with transaction.atomic():
+                payment = Payment.objects.select_for_update().get(pk=pk)
+                payment.status = request.data.get('status', payment.status)
+                payment.save()
+                if payment.status == 'COMPLETED':
+                    publish_event('payment.completed', {'payment_id': payment.id, 'order_id': payment.order_id})
         except Payment.DoesNotExist:
             return Response({"error": "Payment not found"}, status=status.HTTP_404_NOT_FOUND)
-        payment.status = request.data.get('status', payment.status)
-        payment.save()
-        if payment.status == 'COMPLETED':
-            publish_event('payment.completed', {'payment_id': payment.id, 'order_id': payment.order_id})
         serializer = PaymentSerializer(payment)
         return Response(serializer.data)
 
 
 class CancelPayment(APIView):
     def put(self, request, pk):
+        from django.db import transaction
         try:
-            payment = Payment.objects.get(pk=pk)
+            with transaction.atomic():
+                payment = Payment.objects.select_for_update().get(pk=pk)
+                payment.status = 'CANCELLED'
+                payment.save()
         except Payment.DoesNotExist:
             return Response({"error": "Payment not found"}, status=status.HTTP_404_NOT_FOUND)
-        payment.status = 'CANCELLED'
-        payment.save()
         serializer = PaymentSerializer(payment)
         return Response(serializer.data)
 

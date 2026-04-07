@@ -73,9 +73,15 @@ def book_list(request):
     categories = _fetch_json(f"{CATALOG_SERVICE_URL}/categories/")
     cat_map = {c['id']: c['name'] for c in categories} if isinstance(categories, list) else {}
     selected_category = request.GET.get('category', '').strip()
+    search = request.GET.get('search', '').strip()
+    params = {}
     if selected_category:
+        params['category_id'] = selected_category
+    if search:
+        params['search'] = search
+    if params:
         try:
-            r = requests.get(f"{BOOK_SERVICE_URL}/books/", params={"category_id": selected_category}, timeout=5)
+            r = requests.get(f"{BOOK_SERVICE_URL}/books/", params=params, timeout=5)
             books = r.json() if r.status_code == 200 else []
         except Exception:
             books = []
@@ -84,12 +90,6 @@ def book_list(request):
     if isinstance(books, list):
         for b in books:
             b['category_name'] = cat_map.get(b.get('category_id'), '')
-    search = request.GET.get('search', '').strip()
-    if search and isinstance(books, list):
-        books = [b for b in books if
-                 search.lower() in b.get('title', '').lower() or
-                 search.lower() in b.get('author', '').lower() or
-                 search.lower() in b.get('isbn', '').lower()]
     books, page, total_pages = _paginate(books, request)
     return render(request, 'books.html', {
         'books': books,

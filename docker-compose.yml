@@ -12,106 +12,211 @@ services:
       timeout: 5s
       retries: 5
 
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./data/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   customer-service:
     build: ./customer-service
     ports:
       - "8001:8000"
-    volumes:
-      - customer_data:/app/data
+    environment:
+      DB_NAME: customer_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: postgres
+      DB_PORT: "5432"
     depends_on:
-      - cart-service
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      cart-service:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
 
   staff-service:
     build: ./staff-service
     ports:
       - "8004:8000"
-    volumes:
-      - staff_data:/app/data
+    environment:
+      DB_NAME: staff_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: postgres
+      DB_PORT: "5432"
     depends_on:
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
 
   manager-service:
     build: ./manager-service
     ports:
       - "8005:8000"
-    volumes:
-      - manager_data:/app/data
+    environment:
+      DB_NAME: manager_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: postgres
+      DB_PORT: "5432"
     depends_on:
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
 
   catalog-service:
     build: ./catalog-service
     ports:
       - "8006:8000"
-    volumes:
-      - catalog_data:/app/data
+    environment:
+      DB_NAME: catalog_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: postgres
+      DB_PORT: "5432"
     depends_on:
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
 
   book-service:
     build: ./book-service
     ports:
       - "8002:8000"
-    volumes:
-      - book_data:/app/data
+    environment:
+      DB_NAME: book_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: postgres
+      DB_PORT: "5432"
     depends_on:
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
 
   cart-service:
     build: ./cart-service
     ports:
       - "8003:8000"
-    volumes:
-      - cart_data:/app/data
+    environment:
+      DB_NAME: cart_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      REDIS_URL: redis://redis:6379/4
     depends_on:
-      - book-service
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      book-service:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
 
   order-service:
     build: ./order-service
     ports:
       - "8007:8000"
-    volumes:
-      - order_data:/app/data
+    environment:
+      DB_NAME: order_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: postgres
+      DB_PORT: "5432"
     depends_on:
-      - cart-service
-      - book-service
-      - pay-service
-      - ship-service
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      cart-service:
+        condition: service_started
+      book-service:
+        condition: service_started
+      pay-service:
+        condition: service_started
+      ship-service:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
 
   pay-service:
     build: ./pay-service
     ports:
       - "8008:8000"
-    volumes:
-      - pay_data:/app/data
+    environment:
+      DB_NAME: payment_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: postgres
+      DB_PORT: "5432"
     depends_on:
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
 
   ship-service:
     build: ./ship-service
     ports:
       - "8009:8000"
-    volumes:
-      - ship_data:/app/data
+    environment:
+      DB_NAME: shipping_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: postgres
+      DB_PORT: "5432"
     depends_on:
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
 
   comment-rate-service:
     build: ./comment-rate-service
     ports:
       - "8010:8000"
-    volumes:
-      - comment_rate_data:/app/data
+    environment:
+      DB_NAME: comment_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: postgres
+      DB_PORT: "5432"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   recommender-ai-service:
     build: ./recommender-ai-service
     ports:
       - "8011:8000"
-    volumes:
-      - recommender_data:/app/data
     depends_on:
       - book-service
       - comment-rate-service
@@ -120,43 +225,53 @@ services:
     build: ./auth-service
     ports:
       - "8012:8000"
-    volumes:
-      - auth_data:/app/data
+    environment:
+      DB_NAME: auth_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: postgres
+      DB_PORT: "5432"
     depends_on:
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
 
   api-gateway:
     build: ./api-gateway
     ports:
       - "8000:8000"
-    volumes:
-      - gateway_data:/app/data
+    environment:
+      REDIS_URL: redis://redis:6379/0
     depends_on:
-      - customer-service
-      - staff-service
-      - manager-service
-      - catalog-service
-      - book-service
-      - cart-service
-      - order-service
-      - pay-service
-      - ship-service
-      - comment-rate-service
-      - recommender-ai-service
-      - auth-service
+      redis:
+        condition: service_healthy
+      customer-service:
+        condition: service_started
+      staff-service:
+        condition: service_started
+      manager-service:
+        condition: service_started
+      catalog-service:
+        condition: service_started
+      book-service:
+        condition: service_started
+      cart-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+      pay-service:
+        condition: service_started
+      ship-service:
+        condition: service_started
+      comment-rate-service:
+        condition: service_started
+      recommender-ai-service:
+        condition: service_started
+      auth-service:
+        condition: service_started
 
 volumes:
   rabbitmq_data:
-  customer_data:
-  staff_data:
-  manager_data:
-  catalog_data:
-  book_data:
-  cart_data:
-  order_data:
-  pay_data:
-  ship_data:
-  comment_rate_data:
-  recommender_data:
-  auth_data:
-  gateway_data:
+  postgres_data:
+  redis_data:

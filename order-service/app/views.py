@@ -184,12 +184,14 @@ class OrderDetail(APIView):
         return Response(serializer.data)
 
     def put(self, request, pk):
+        from django.db import transaction
         try:
-            order = Order.objects.get(pk=pk)
+            with transaction.atomic():
+                order = Order.objects.select_for_update().get(pk=pk)
+                order.status = request.data.get('status', order.status)
+                order.save()
         except Order.DoesNotExist:
             return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
-        order.status = request.data.get('status', order.status)
-        order.save()
 
         publish_event('order.status_changed', {
             'order_id': order.id,
