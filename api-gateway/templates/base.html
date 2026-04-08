@@ -101,6 +101,7 @@
         {% endif %}
         {% block content %}{% endblock %}
     </div>
+    {% include "chat_widget.html" %}
     <script>
     document.querySelectorAll('form').forEach(function(form) {
         form.addEventListener('submit', function() {

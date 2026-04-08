@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Behavior Analysis{% endblock %}
+{% block content %}
+<h1>Customer Behavior Analysis</h1>
+{% if customer_name %}
+<h2>{{ customer_name }} (ID: {{ customer_id }})</h2>
+{% else %}
+<h2>Customer #{{ customer_id }}</h2>
+{% endif %}
+
+{% if behavior %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-num">{{ behavior.segment|default:"N/A" }}</div>
+        <div class="stat-label">Segment</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-num">{{ behavior.total_orders|default:0 }}</div>
+        <div class="stat-label">Total Orders</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-num">{{ behavior.total_spent|default:"0" }}</div>
+        <div class="stat-label">Total Spent (VND)</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-num">{{ behavior.avg_order_value|default:"0" }}</div>
+        <div class="stat-label">Avg Order Value</div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Details</h2>
+    <table>
+        <tr>
+            <th>Metric</th>
+            <th>Value</th>
+        </tr>
+        <tr>
+            <td>Average Rating Given</td>
+            <td>{{ behavior.avg_rating_given|default:"N/A" }} / 5</td>
+        </tr>
+        <tr>
+            <td>Purchase Frequency</td>
+            <td>{% if behavior.purchase_frequency_days %}Every {{ behavior.purchase_frequency_days }} days{% else %}N/A{% endif %}</td>
+        </tr>
+        <tr>
+            <td>Last Order</td>
+            <td>{{ behavior.last_order_date|default:"N/A" }}</td>
+        </tr>
+        <tr>
+            <td>Favorite Categories</td>
+            <td>
+                {% for cat in behavior.favorite_categories %}
+                    {{ cat.name }} ({{ cat.count }}){% if not forloop.last %}, {% endif %}
+                {% empty %}
+                    N/A
+                {% endfor %}
+            </td>
+        </tr>
+        <tr>
+            <td>Favorite Authors</td>
+            <td>
+                {% for a in behavior.favorite_authors %}
+                    {{ a.author }} ({{ a.count }}){% if not forloop.last %}, {% endif %}
+                {% empty %}
+                    N/A
+                {% endfor %}
+            </td>
+        </tr>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info">No behavior data available for this customer.</div>
+{% endif %}
+
+<a href="/" class="btn">Back to Home</a>
+{% endblock %}

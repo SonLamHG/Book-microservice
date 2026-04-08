@@ -10,7 +10,7 @@ echo ""
 # -------------------------------------------------------
 # Phase 1: Auth Service (Python - can hash password)
 # -------------------------------------------------------
-echo "[1/7] Seeding auth-service (users)..."
+echo "[1/8] Seeding auth-service (users)..."
 docker-compose exec -T auth-service python manage.py shell <<'PYEOF'
 from app.models import User
 
@@ -64,19 +64,19 @@ seed_service() {
 # -------------------------------------------------------
 # Phase 2: Catalog Service (categories)
 # -------------------------------------------------------
-echo "[2/7] Seeding catalog-service (categories)..."
+echo "[2/8] Seeding catalog-service (categories)..."
 seed_service "catalog-service" "catalog-service" "catalog_db"
 
 # -------------------------------------------------------
 # Phase 3: Book Service (books)
 # -------------------------------------------------------
-echo "[3/7] Seeding book-service (books)..."
+echo "[3/8] Seeding book-service (books)..."
 seed_service "book-service" "book-service" "book_db"
 
 # -------------------------------------------------------
 # Phase 4: Customer / Staff / Manager
 # -------------------------------------------------------
-echo "[4/7] Seeding customer-service, staff-service, manager-service..."
+echo "[4/8] Seeding customer-service, staff-service, manager-service..."
 seed_service "customer-service" "customer-service" "customer_db"
 seed_service "staff-service" "staff-service" "staff_db"
 seed_service "manager-service" "manager-service" "manager_db"
@@ -84,13 +84,13 @@ seed_service "manager-service" "manager-service" "manager_db"
 # -------------------------------------------------------
 # Phase 5: Cart Service
 # -------------------------------------------------------
-echo "[5/7] Seeding cart-service (carts + items)..."
+echo "[5/8] Seeding cart-service (carts + items)..."
 seed_service "cart-service" "cart-service" "cart_db"
 
 # -------------------------------------------------------
 # Phase 6: Order / Payment / Shipping
 # -------------------------------------------------------
-echo "[6/7] Seeding order-service, pay-service, ship-service..."
+echo "[6/8] Seeding order-service, pay-service, ship-service..."
 seed_service "order-service" "order-service" "order_db"
 seed_service "pay-service" "pay-service" "payment_db"
 seed_service "ship-service" "ship-service" "shipping_db"
@@ -98,7 +98,7 @@ seed_service "ship-service" "ship-service" "shipping_db"
 # -------------------------------------------------------
 # Phase 7: Comment-Rate Service (reviews)
 # -------------------------------------------------------
-echo "[7/7] Seeding comment-rate-service (reviews)..."
+echo "[7/8] Seeding comment-rate-service (reviews)..."
 seed_service "comment-rate-service" "comment-rate-service" "comment_db"
 
 # -------------------------------------------------------
@@ -138,6 +138,12 @@ reset_sequences "order_db"
 reset_sequences "payment_db"
 reset_sequences "shipping_db"
 reset_sequences "comment_db"
+
+# -------------------------------------------------------
+# Phase 8: Advisory Chat Service (Knowledge Base)
+# -------------------------------------------------------
+echo "[8/8] Loading advisory-chat-service Knowledge Base..."
+docker-compose exec -T advisory-chat-service python manage.py load_kb --clear 2>&1 || echo "  WARNING: KB loading failed (service may not be ready yet)"
 
 echo ""
 echo "=== All services seeded successfully! ==="

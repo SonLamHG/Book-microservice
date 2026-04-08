@@ -10,3 +10,4 @@ CREATE DATABASE order_db;
 CREATE DATABASE payment_db;
 CREATE DATABASE shipping_db;
 CREATE DATABASE comment_db;
+CREATE DATABASE advisory_db;

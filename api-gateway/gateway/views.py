@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 import requests
 import json
 
@@ -15,6 +16,7 @@ SHIP_SERVICE_URL = "http://ship-service:8000"
 COMMENT_RATE_SERVICE_URL = "http://comment-rate-service:8000"
 RECOMMENDER_SERVICE_URL = "http://recommender-ai-service:8000"
 AUTH_SERVICE_URL = "http://auth-service:8000"
+ADVISORY_SERVICE_URL = "http://advisory-chat-service:8000"
 
 
 def _flash(request, message, flash_type='success'):
@@ -835,6 +837,89 @@ def auth_register(request):
 def auth_logout(request):
     request.session.flush()
     return redirect('auth_login')
+
+
+# ---- Advisory Chat ----
+
+@csrf_exempt
+def advisory_chat_api(request):
+    """Proxy API for chat widget — handles session creation, message sending, and history."""
+    if request.method == 'POST':
+        try:
+            body = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+        action = body.get('action')
+
+        if action == 'create_session':
+            customer_id = body.get('customer_id')
+            if not customer_id:
+                return JsonResponse({'error': 'customer_id required'}, status=400)
+            try:
+                r = requests.post(
+                    f"{ADVISORY_SERVICE_URL}/chat/sessions/",
+                    json={'customer_id': customer_id},
+                    timeout=5,
+                )
+                return JsonResponse(r.json(), status=r.status_code)
+            except Exception:
+                return JsonResponse({'error': 'Advisory service unavailable'}, status=503)
+
+        elif action == 'send_message':
+            session_id = body.get('session_id')
+            message = body.get('message')
+            if not session_id or not message:
+                return JsonResponse({'error': 'session_id and message required'}, status=400)
+            try:
+                r = requests.post(
+                    f"{ADVISORY_SERVICE_URL}/chat/sessions/{session_id}/messages/",
+                    json={'message': message},
+                    timeout=30,
+                )
+                return JsonResponse(r.json(), status=r.status_code)
+            except Exception:
+                return JsonResponse({'error': 'Advisory service unavailable'}, status=503)
+
+        elif action == 'get_history':
+            session_id = body.get('session_id')
+            if not session_id:
+                return JsonResponse({'error': 'session_id required'}, status=400)
+            try:
+                r = requests.get(
+                    f"{ADVISORY_SERVICE_URL}/chat/sessions/{session_id}/",
+                    timeout=5,
+                )
+                return JsonResponse(r.json(), status=r.status_code)
+            except Exception:
+                return JsonResponse({'error': 'Advisory service unavailable'}, status=503)
+
+        return JsonResponse({'error': 'Unknown action'}, status=400)
+
+    return JsonResponse({'error': 'POST only'}, status=405)
+
+
+def advisory_behavior(request, customer_id):
+    """View behavior analysis for a customer."""
+    try:
+        r = requests.get(f"{ADVISORY_SERVICE_URL}/behavior/{customer_id}/", timeout=5)
+        data = r.json() if r.status_code == 200 else {}
+    except Exception:
+        data = {}
+
+    customer_name = ''
+    try:
+        cr = requests.get(f"{CUSTOMER_SERVICE_URL}/customers/{customer_id}/", timeout=5)
+        if cr.status_code == 200:
+            customer_name = cr.json().get('name', '')
+    except Exception:
+        pass
+
+    return render(request, 'behavior.html', {
+        'behavior': data,
+        'customer_id': customer_id,
+        'customer_name': customer_name,
+    })
 
 
 def health_check(request):

@@ -41,6 +41,9 @@ urlpatterns = [
     path('categories/create/', views.category_create, name='category_create'),
     path('categories/<int:pk>/edit/', views.category_edit, name='category_edit'),
     path('categories/<int:pk>/delete/', views.category_delete, name='category_delete'),
+    # Advisory Chat
+    path('chat/api/', views.advisory_chat_api, name='advisory_chat_api'),
+    path('behavior/<int:customer_id>/', views.advisory_behavior, name='advisory_behavior'),
     # Auth
     path('auth/login/', views.auth_login, name='auth_login'),
     path('auth/register/', views.auth_register, name='auth_register'),

@@ -13,7 +13,7 @@ services:
       retries: 5
 
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -237,6 +237,31 @@ services:
       rabbitmq:
         condition: service_started
 
+  advisory-chat-service:
+    build: ./advisory-chat-service
+    ports:
+      - "8013:8000"
+    environment:
+      DB_NAME: advisory_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      book-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+      comment-rate-service:
+        condition: service_started
+      catalog-service:
+        condition: service_started
+
   api-gateway:
     build: ./api-gateway
     ports:
@@ -269,6 +294,8 @@ services:
       recommender-ai-service:
         condition: service_started
       auth-service:
+        condition: service_started
+      advisory-chat-service:
         condition: service_started
 
 volumes:
