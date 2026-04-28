@@ -18,11 +18,11 @@
     </div>
     <table style="margin-bottom: 10px;">
         <tr>
-            <th>Book</th><th>Price</th><th>Qty</th><th>Subtotal</th>
+            <th>Product</th><th>Price</th><th>Qty</th><th>Subtotal</th>
         </tr>
         {% for item in order.items %}
         <tr>
-            <td>{% if item.book %}{{ item.book.title }}{% else %}Book #{{ item.book_id }}{% endif %}</td>
+            <td>{% if item.product %}{{ item.product.title }}{% else %}Product #{{ item.product_id }}{% endif %}</td>
             <td>${{ item.price }}</td>
             <td>{{ item.quantity }}</td>
             <td>${{ item.price|floatformat:2 }}</td>

@@ -3,11 +3,11 @@ from . import views
 
 urlpatterns = [
     path('', views.home, name='home'),
-    # Books
-    path('books/', views.book_list, name='book_list'),
-    path('books/create/', views.book_create, name='book_create'),
-    path('books/<int:pk>/edit/', views.book_edit, name='book_edit'),
-    path('books/<int:pk>/delete/', views.book_delete, name='book_delete'),
+    # Products
+    path('products/', views.product_list, name='product_list'),
+    path('products/create/', views.product_create, name='product_create'),
+    path('products/<int:pk>/edit/', views.product_edit, name='product_edit'),
+    path('products/<int:pk>/delete/', views.product_delete, name='product_delete'),
     # Customers
     path('customers/', views.customer_list, name='customer_list'),
     path('customers/register/', views.customer_register, name='customer_register'),
@@ -22,7 +22,7 @@ urlpatterns = [
     path('orders/<int:customer_id>/', views.order_list, name='order_list'),
     path('orders/create/', views.create_order, name='create_order'),
     # Reviews
-    path('reviews/book/<int:book_id>/', views.book_reviews, name='book_reviews'),
+    path('reviews/product/<int:product_id>/', views.product_reviews, name='product_reviews'),
     path('reviews/add/', views.add_review, name='add_review'),
     # Recommendations
     path('recommendations/<int:customer_id>/', views.recommendations, name='recommendations'),

@@ -1,109 +1,84 @@
 {% extends 'base.html' %}
-{% block title %}Recommendations{% endblock %}
+{% block title %}AI Advisor{% endblock %}
 {% block content %}
 <style>
     .advisor-layout { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; align-items: start; }
     .advisor-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
     .advisor-card h2 { margin-bottom: 12px; }
-    .book-grid { display: grid; gap: 14px; }
-    .book-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; background: #fcfcfd; }
-    .book-meta { color: #667085; margin-bottom: 8px; }
-    .book-why { margin: 10px 0; color: #344054; }
-    .book-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .product-grid { display: grid; gap: 14px; }
+    .product-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; background: #fcfcfd; }
+    .product-meta { color: #667085; margin-bottom: 8px; }
+    .product-why { margin: 10px 0; color: #344054; }
+    .product-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
     .chip { background: #eef4ff; color: #1d4ed8; padding: 5px 10px; border-radius: 999px; font-size: 12px; }
     .advisor-form textarea { min-height: 140px; resize: vertical; }
     .advisor-answer { white-space: pre-line; line-height: 1.6; color: #1f2937; }
-    .advisor-summary { display: grid; gap: 12px; }
-    .summary-row { padding: 12px; background: #f8fafc; border-radius: 10px; }
-    .summary-row strong { display: block; color: #0f172a; margin-bottom: 4px; }
+    .follow-up-questions { margin-top: 15px; }
+    .follow-up-questions button { margin-bottom: 8px; text-align: left; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; cursor: pointer; display: block; width: 100%; transition: background 0.2s; }
+    .follow-up-questions button:hover { background: #e2e8f0; }
     @media (max-width: 900px) {
         .advisor-layout { grid-template-columns: 1fr; }
     }
 </style>
 
-<h1>AI Recommendations for Customer #{{ customer_id }}</h1>
+<h1>AI Shopping Advisor (Customer #{{ customer_id }})</h1>
 <div class="advisor-layout">
     <div class="advisor-card">
-        <h2>Recommended Books</h2>
+        <h2>Recommended For You</h2>
         {% if data.answer_text %}
         <div class="alert alert-info advisor-answer">{{ data.answer_text }}</div>
         {% endif %}
 
-        {% if data.recommended_books %}
-        <div class="book-grid">
-            {% for book in data.recommended_books %}
-            <div class="book-card">
-                <h3>{{ book.title }}</h3>
-                <div class="book-meta">{{ book.author }} | {{ book.category_name }} | {{ book.price }}</div>
-                <div class="book-why"><strong>Why this fits:</strong> {{ book.why_recommended }}</div>
-                {% if book.description_short %}
-                <div class="book-meta">{{ book.description_short }}</div>
-                {% endif %}
-                <div class="chips">
-                    {% for code in book.reason_codes %}
-                    <span class="chip">{{ code }}</span>
-                    {% endfor %}
-                    {% if book.avg_rating %}
-                    <span class="chip">Rating {{ book.avg_rating }}/5</span>
-                    {% endif %}
-                </div>
-                <div class="book-actions" style="margin-top: 12px;">
+        {% if data.recommended_products %}
+        <div class="product-grid">
+            {% for product in data.recommended_products %}
+            <div class="product-card">
+                <h3>{{ product.title }}</h3>
+                <div class="product-meta">{{ product.author }} | {{ product.category_name }} | {{ product.price|floatformat:0 }}₫</div>
+                <div class="product-why"><strong>Why this fits:</strong> {{ product.why_recommended }}</div>
+                <div class="product-actions" style="margin-top: 12px;">
                     <form method="post" action="/cart/add/" style="display:inline;">
                         {% csrf_token %}
                         <input type="hidden" name="customer_id" value="{{ customer_id }}">
-                        <input type="hidden" name="book_id" value="{{ book.book_id }}">
+                        <input type="hidden" name="product_id" value="{{ product.product_id }}">
                         <input type="hidden" name="quantity" value="1">
                         <button type="submit" class="btn btn-sm btn-success">+ Cart</button>
                     </form>
-                    <a href="/reviews/book/{{ book.book_id }}/?customer_id={{ customer_id }}" class="btn btn-sm">Reviews</a>
+                    <a href="/reviews/product/{{ product.product_id }}/?customer_id={{ customer_id }}" class="btn btn-sm">Reviews</a>
                 </div>
             </div>
             {% endfor %}
         </div>
         {% else %}
-        <div class="alert alert-warning">No personalized recommendations available yet.</div>
+        <div class="alert alert-warning">No personalized recommendations available yet. Try asking the AI or browsing some products first!</div>
         {% endif %}
     </div>
 
     <div class="advisor-card">
-        <h2>Ask The Advisor</h2>
-        <form method="post" action="/recommendations/{{ customer_id }}/ask/" class="advisor-form">
+        <h2>Ask The AI Advisor</h2>
+        <form method="post" action="/recommendations/{{ customer_id }}/ask/" class="advisor-form" id="aiForm">
             {% csrf_token %}
             <div class="form-group">
-                <label for="user_prompt">What kind of book are you looking for?</label>
-                <textarea id="user_prompt" name="user_prompt" placeholder="Example: I want an easy-to-read backend book with practical examples and a medium budget">{{ user_prompt }}</textarea>
+                <textarea id="user_prompt" name="user_prompt" placeholder="Example: I want a programming product under 200k VND">{{ user_prompt }}</textarea>
             </div>
-            <button type="submit" class="btn btn-success">Ask AI Advisor</button>
+            <button type="submit" class="btn btn-success" style="width: 100%;">Ask AI Advisor</button>
         </form>
 
-        <div class="advisor-summary" style="margin-top: 18px;">
-            <div class="summary-row">
-                <strong>Preferred Categories</strong>
-                {% if data.behavior_summary.preferred_categories %}
-                    {{ data.behavior_summary.preferred_categories|join:", " }}
-                {% else %}
-                    No category signal yet
-                {% endif %}
-            </div>
-            <div class="summary-row">
-                <strong>Price Band</strong>
-                {{ data.behavior_summary.price_band|default:"medium" }}
-            </div>
-            <div class="summary-row">
-                <strong>Model Source</strong>
-                {{ data.sources.behavior_model_version|default:"behavior-mlp-v1" }}
-            </div>
-            <div class="summary-row">
-                <strong>Fallback Used</strong>
-                {% if data.fallback_used %}Yes{% else %}No{% endif %}
-            </div>
+        {% if data.follow_up_questions %}
+        <div class="follow-up-questions">
+            <strong>Suggested questions:</strong>
+            {% for question in data.follow_up_questions %}
+            <button type="button" onclick="document.getElementById('user_prompt').value = '{{ question }}'; document.getElementById('aiForm').submit();">
+                {{ question }}
+            </button>
+            {% endfor %}
         </div>
+        {% endif %}
 
-        <p style="margin-top: 16px;">
+        <p style="margin-top: 24px; text-align: center;">
             <a href="/cart/{{ customer_id }}/" class="btn">View Cart</a>
-            <a href="/books/" class="btn">Browse Books</a>
-            <a href="/customers/" class="btn">Back to Customers</a>
+            <a href="/products/" class="btn">Browse Products</a>
         </p>
     </div>
 </div>

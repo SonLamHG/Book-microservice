@@ -4,10 +4,11 @@ from rest_framework import status
 from .models import Order, OrderItem, SagaLog
 from .serializers import OrderSerializer
 import requests
+import os
 from .messaging import publish_event
 
 CART_SERVICE_URL = "http://cart-service:8000"
-BOOK_SERVICE_URL = "http://book-service:8000"
+PRODUCT_SERVICE_URL = os.getenv("PRODUCT_SERVICE_URL", "http://product-service:8000")
 PAY_SERVICE_URL = "http://pay-service:8000"
 SHIP_SERVICE_URL = "http://ship-service:8000"
 
@@ -53,29 +54,31 @@ class OrderListCreate(APIView):
         )
         log_saga_step(order, 'CREATE_ORDER', 'SUCCESS')
 
-        # === SAGA STEP 3: Fetch book prices and create order items ===
+        # === SAGA STEP 3: Fetch product prices and create order items ===
+        # cart item uses book_id column (legacy name, maps to product_id)
         total = 0
         order_items_data = []
         for item in cart_items:
+            product_id = item.get('book_id') or item.get('product_id')
             try:
-                br = requests.get(f"{BOOK_SERVICE_URL}/books/{item['book_id']}/", timeout=5)
-                if br.status_code != 200:
-                    log_saga_step(order, 'FETCH_BOOK_PRICE', 'FAILED', f"Book {item['book_id']} not found")
+                pr = requests.get(f"{PRODUCT_SERVICE_URL}/api/v1/products/{product_id}/", timeout=5)
+                if pr.status_code != 200:
+                    log_saga_step(order, 'FETCH_PRODUCT_PRICE', 'FAILED', f"Product {product_id} not found")
                     order.status = 'CANCELLED'
                     order.save()
-                    log_saga_step(order, 'COMPENSATE_ORDER', 'SUCCESS', 'Order cancelled due to book not found')
-                    return Response({"error": f"Book {item['book_id']} not found"}, status=status.HTTP_400_BAD_REQUEST)
-                book_data = br.json()
-                price = float(book_data.get('price', 0))
+                    log_saga_step(order, 'COMPENSATE_ORDER', 'SUCCESS', 'Order cancelled due to product not found')
+                    return Response({"error": f"Product {product_id} not found"}, status=status.HTTP_400_BAD_REQUEST)
+                product_data = pr.json()
+                price = float(product_data.get('price', 0))
             except requests.exceptions.RequestException:
-                log_saga_step(order, 'FETCH_BOOK_PRICE', 'FAILED', 'Book service unavailable')
+                log_saga_step(order, 'FETCH_PRODUCT_PRICE', 'FAILED', 'Product service unavailable')
                 order.status = 'CANCELLED'
                 order.save()
                 log_saga_step(order, 'COMPENSATE_ORDER', 'SUCCESS', 'Order cancelled due to service unavailable')
-                return Response({"error": "Book service unavailable"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+                return Response({"error": "Product service unavailable"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
             order_items_data.append({
-                'book_id': item['book_id'],
+                'book_id': product_id,  # keep column name for DB compatibility
                 'quantity': item['quantity'],
                 'price': price,
             })
@@ -86,7 +89,7 @@ class OrderListCreate(APIView):
 
         order.total_amount = total
         order.save()
-        log_saga_step(order, 'FETCH_BOOK_PRICE', 'SUCCESS', f'Total: {total}')
+        log_saga_step(order, 'FETCH_PRODUCT_PRICE', 'SUCCESS', f'Total: {total}')
 
         # === SAGA STEP 4: Reserve payment ===
         payment_id = None
@@ -124,7 +127,6 @@ class OrderListCreate(APIView):
                 shipment_id = sr.json().get('id')
                 log_saga_step(order, 'RESERVE_SHIPMENT', 'SUCCESS', f'Shipment ID: {shipment_id}')
             else:
-                # COMPENSATE: Cancel payment
                 log_saga_step(order, 'RESERVE_SHIPMENT', 'FAILED', 'Shipment creation failed')
                 if payment_id:
                     try:
@@ -137,7 +139,6 @@ class OrderListCreate(APIView):
                 log_saga_step(order, 'COMPENSATE_ORDER', 'SUCCESS', 'Order cancelled due to shipment failure')
                 return Response({"error": "Shipment reservation failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except requests.exceptions.RequestException:
-            # COMPENSATE: Cancel payment
             log_saga_step(order, 'RESERVE_SHIPMENT', 'FAILED', 'Ship service unavailable')
             if payment_id:
                 try:

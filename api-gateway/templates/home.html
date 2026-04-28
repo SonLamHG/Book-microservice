@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
 {% block title %}Home{% endblock %}
 {% block content %}
-<h1>BookStore Microservice System</h1>
+<h1>ProductStore Microservice System</h1>
 
 <div class="stats-grid">
     <div class="stat-card">
-        <div class="stat-num">{{ stats.books }}</div>
-        <div class="stat-label">Books</div>
+        <div class="stat-num">{{ stats.products }}</div>
+        <div class="stat-label">Products</div>
     </div>
     <div class="stat-card">
         <div class="stat-num">{{ stats.customers }}</div>
@@ -31,7 +31,7 @@
 <div class="card">
     <h2>Quick Links</h2>
     <p style="margin: 10px 0;">
-        <a href="/books/" class="btn">Browse Books</a>
+        <a href="/products/" class="btn">Browse Products</a>
         {% if customer_id %}
             <a href="/cart/{{ customer_id }}/" class="btn btn-success">My Cart</a>
             <a href="/orders/{{ customer_id }}/" class="btn">My Orders</a>

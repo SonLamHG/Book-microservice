@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Products" %}{% endblock %}
+{% block content %}
+<style>
+    .products-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 18px;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .products-toolbar .filter-form {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex: 1;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+    .products-toolbar .filter-form select,
+    .products-toolbar .filter-form input[type="text"] {
+        padding: 8px 12px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    .products-toolbar .filter-form select { min-width: 160px; }
+    .products-toolbar .filter-form input[type="text"] { min-width: 200px; flex: 1; max-width: 320px; }
+
+    .products-table { width: 100%; border-collapse: collapse; background: white; table-layout: fixed; }
+    .products-table th, .products-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #ddd; overflow: hidden; text-overflow: ellipsis; }
+    .products-table th { background: #2c3e50; color: white; white-space: nowrap; }
+    .products-table .col-id { width: 50px; text-align: center; }
+    .products-table .col-title { width: 24%; }
+    .products-table .col-author { width: 16%; }
+    .products-table .col-category { width: 14%; }
+    .products-table .col-price { width: 10%; text-align: right; }
+    .products-table .col-stock { width: 7%; text-align: center; }
+    .products-table .col-actions { width: auto; }
+    .products-table td.col-price { text-align: right; white-space: nowrap; }
+    .products-table td.col-stock { text-align: center; }
+    .products-table td.col-id { text-align: center; }
+
+    .product-actions { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+    .product-actions form { display: inline-flex; gap: 4px; align-items: center; margin: 0; }
+    .product-actions select { padding: 3px 4px; font-size: 12px; width: 110px; border: 1px solid #ccc; border-radius: 3px; }
+</style>
+
+<h1>{% trans "Product List" %}</h1>
+
+<div class="products-toolbar">
+    {% if user_role == 'STAFF' or user_role == 'MANAGER' or user_role == 'ADMIN' %}
+    <a href="/products/create/" class="btn btn-success">+ {% trans "Add New Product" %}</a>
+    {% endif %}
+    <form method="get" class="filter-form">
+        <select name="category" onchange="this.form.submit()">
+            <option value="">{% trans "All Categories" %}</option>
+            {% for c in categories %}
+            <option value="{{ c.id }}" {% if selected_category == c.id|stringformat:"d" %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+        <input type="text" name="search" value="{{ search }}" placeholder="{% trans "Search title, author, ISBN..." %}">
+        <button type="submit" class="btn">{% trans "Search" %}</button>
+        {% if search or selected_category %}<a href="/products/" class="btn btn-warning">{% trans "Clear" %}</a>{% endif %}
+    </form>
+</div>
+
+<table class="products-table">
+    <thead>
+        <tr>
+            <th class="col-id">{% trans "ID" %}</th>
+            <th class="col-title">{% trans "Title" %}</th>
+            <th class="col-author">{% trans "Author" %}</th>
+            <th class="col-category">{% trans "Category" %}</th>
+            <th class="col-price">{% trans "Price" %}</th>
+            <th class="col-stock">{% trans "Stock" %}</th>
+            <th class="col-actions">{% trans "Actions" %}</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for product in products %}
+        <tr>
+            <td class="col-id">{{ product.id }}</td>
+            <td class="col-title" title="{{ product.title }}">{{ product.title }}</td>
+            <td class="col-author" title="{{ product.author }}">{{ product.author }}</td>
+            <td class="col-category">{{ product.category_name|default:"-" }}</td>
+            <td class="col-price">{{ product.price|floatformat:0 }}&#8363;</td>
+            <td class="col-stock">{{ product.stock }}</td>
+            <td class="col-actions">
+                <div class="product-actions">
+                    <a href="/reviews/product/{{ product.id }}/" class="btn btn-sm">{% trans "Reviews" %}</a>
+                    {% if customer_id %}
+                    <form method="post" action="/cart/add/">
+                        {% csrf_token %}
+                        <input type="hidden" name="product_id" value="{{ product.id }}">
+                        <input type="hidden" name="quantity" value="1">
+                        <input type="hidden" name="redirect_to" value="products">
+                        <input type="hidden" name="customer_id" value="{{ customer_id }}">
+                        <button type="submit" class="btn btn-sm btn-success">+ {% trans "Cart" %}</button>
+                    </form>
+                    {% elif customers %}
+                    <form method="post" action="/cart/add/">
+                        {% csrf_token %}
+                        <input type="hidden" name="product_id" value="{{ product.id }}">
+                        <input type="hidden" name="quantity" value="1">
+                        <input type="hidden" name="redirect_to" value="products">
+                        <select name="customer_id" required>
+                            <option value="">Customer</option>
+                            {% for c in customers %}
+                            <option value="{{ c.id }}">{{ c.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-success">+ Cart</button>
+                    </form>
+                    {% endif %}
+                    {% if user_role == 'STAFF' or user_role == 'MANAGER' or user_role == 'ADMIN' %}
+                    <a href="/products/{{ product.id }}/edit/" class="btn btn-sm btn-warning">Edit</a>
+                    <form method="post" action="/products/{{ product.id }}/delete/">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this product?')">Delete</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="7" style="text-align: center; padding: 20px; color: #7f8c8d;">No products found.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+{% if total_pages > 1 %}
+<div class="pagination">
+    {% if page > 1 %}
+        <a href="?page={{ page|add:"-1" }}{% if search %}&search={{ search }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}" class="btn btn-sm">&laquo; Previous</a>
+    {% endif %}
+    <span class="page-info">Page {{ page }} / {{ total_pages }}</span>
+    {% if page < total_pages %}
+        <a href="?page={{ page|add:"1" }}{% if search %}&search={{ search }}{% endif %}{% if selected_category %}&category={{ selected_category }}{% endif %}" class="btn btn-sm">Next &raquo;</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

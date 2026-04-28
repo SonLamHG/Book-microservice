@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+{% load i18n %}
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BookStore - {% block title %}Home{% endblock %}</title>
+    <title>{% trans "BookStore" %} - {% block title %}{% trans "Home" %}{% endblock %}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; background: #f5f5f5; }
@@ -70,9 +71,8 @@
     <nav>
         <div class="nav-links">
             <a href="/">Home</a>
-            <a href="/books/">Books</a>
+            <a href="/products/">Products</a>
             {% if user_role == 'STAFF' or user_role == 'MANAGER' or user_role == 'ADMIN' %}
-                <a href="/customers/">Customers</a>
                 <a href="/categories/">Categories</a>
                 <a href="/staff/">Staff</a>
             {% endif %}

@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 {% block title %}Reviews{% endblock %}
 {% block content %}
-<h1>Reviews for {% if book_data %}{{ book_data.title }}{% else %}Book #{{ book_id }}{% endif %}</h1>
+<h1>Reviews for {% if product_data %}{{ product_data.title }}{% else %}Product #{{ product_id }}{% endif %}</h1>
 
-{% if book_data %}
+{% if product_data %}
 <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
     <div>
-        <strong>{{ book_data.title }}</strong> by {{ book_data.author }}<br>
-        <span style="color: #27ae60; font-size: 1.2em;">${{ book_data.price }}</span>
+        <strong>{{ product_data.title }}</strong> by {{ product_data.author }}<br>
+        <span style="color: #27ae60; font-size: 1.2em;">${{ product_data.price }}</span>
     </div>
     {% if review_data.average_rating %}
     <div style="text-align: center;">
@@ -24,7 +24,7 @@
     <h2>Add Review</h2>
     <form method="post" action="/reviews/add/">
         {% csrf_token %}
-        <input type="hidden" name="book_id" value="{{ book_id }}">
+        <input type="hidden" name="product_id" value="{{ product_id }}">
         {% if customer_id %}
             <input type="hidden" name="customer_id" value="{{ customer_id }}">
         {% else %}
@@ -65,5 +65,5 @@
 {% endfor %}
 {% endif %}
 
-<a href="/books/" class="btn" style="margin-top: 10px;">Back to Books</a>
+<a href="/products/" class="btn" style="margin-top: 10px;">Back to Products</a>
 {% endblock %}

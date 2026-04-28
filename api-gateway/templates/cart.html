@@ -4,16 +4,16 @@
 <h1>Cart for {{ customer_name|default:"Customer" }} (#{{ customer_id }})</h1>
 
 <div class="card">
-    <h2>Add Book to Cart</h2>
+    <h2>Add Product to Cart</h2>
     <form method="post" action="/cart/add/" class="form-inline">
         {% csrf_token %}
         <input type="hidden" name="customer_id" value="{{ customer_id }}">
         <div class="form-group">
-            <label>Book</label>
-            <select name="book_id" required style="width: 280px;">
-                <option value="">-- Select a book --</option>
-                {% for book in books %}
-                <option value="{{ book.id }}">{{ book.title }} - ${{ book.price }}</option>
+            <label>Product</label>
+            <select name="product_id" required style="width: 280px;">
+                <option value="">-- Select a product --</option>
+                {% for product in products %}
+                <option value="{{ product.id }}">{{ product.title }} - ${{ product.price }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -27,13 +27,13 @@
 
 <table>
     <tr>
-        <th>Book ID</th><th>Title</th><th>Price</th><th>Quantity</th><th>Subtotal</th><th>Actions</th>
+        <th>Product ID</th><th>Title</th><th>Price</th><th>Quantity</th><th>Subtotal</th><th>Actions</th>
     </tr>
     {% for item in items %}
     <tr>
-        <td>{{ item.book_id }}</td>
-        <td>{% if item.book %}{{ item.book.title }}{% else %}N/A{% endif %}</td>
-        <td>{% if item.book %}${{ item.book.price }}{% else %}N/A{% endif %}</td>
+        <td>{{ item.product_id }}</td>
+        <td>{% if item.product %}{{ item.product.title }}{% else %}N/A{% endif %}</td>
+        <td>{% if item.product %}${{ item.product.price }}{% else %}N/A{% endif %}</td>
         <td>
             <form method="post" action="/cart/item/{{ item.id }}/update/" class="form-inline">
                 {% csrf_token %}
@@ -43,7 +43,7 @@
             </form>
         </td>
         <td>
-            {% if item.book %}
+            {% if item.product %}
                 ${{ item.subtotal|floatformat:2 }}
             {% else %}
                 N/A
@@ -100,7 +100,7 @@
 
 <p style="margin-top: 15px;">
     <a href="/orders/{{ customer_id }}/" class="btn">View Orders</a>
-    <a href="/books/" class="btn">Browse Books</a>
+    <a href="/products/" class="btn">Browse Products</a>
     <a href="/customers/" class="btn">Back to Customers</a>
 </p>
 {% endblock %}
