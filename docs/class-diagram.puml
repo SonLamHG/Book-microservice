@@ -1,0 +1,406 @@
+@startuml class-diagram
+' =====================================================================
+' Class Diagram — Bookstore E-Commerce Microservices
+' Source: Django models across 14 services (book-service, cart-service,
+' order-service, pay-service, ship-service, customer-service, auth-service,
+' staff-service, manager-service, catalog-service, comment-rate-service,
+' recommender-ai-service, advisory-chat-service, api-gateway).
+'
+' How to use this file:
+'   - Render to PNG/PDF:    plantuml -tpng class-diagram.puml
+'   - Import to Visual Paradigm: File -> Import -> PlantUML
+'   - Or render at https://www.plantuml.com/plantuml/uml/
+' =====================================================================
+
+title **Bookstore E-Commerce — Domain Class Diagram**\nDDD Bounded Contexts mapped to Microservices
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype ortho
+skinparam roundCorner 8
+skinparam class {
+    BackgroundColor #FDFEFE
+    BorderColor     #2C3E50
+    HeaderBackgroundColor #2C3E50
+    HeaderFontColor #FFFFFF
+}
+skinparam package {
+    BackgroundColor #ECF0F1
+    BorderColor     #34495E
+    FontStyle bold
+}
+
+' =====================================================================
+' USER CONTEXT  (auth-service + customer / staff / manager services)
+' =====================================================================
+package "User Context" <<auth-service / customer / staff / manager>> #FFF7E6 {
+
+    enum Role {
+        CUSTOMER
+        STAFF
+        MANAGER
+        ADMIN
+    }
+
+    class User {
+        + id : int <<PK>>
+        + username : varchar(150) <<unique>>
+        + email : varchar <<unique>>
+        - password : varchar(255)
+        + role : Role
+        + created_at : datetime
+        --
+        + set_password(raw)
+        + check_password(raw) : bool
+    }
+
+    class Customer {
+        + id : int <<PK>>
+        + name : varchar(255)
+        + email : varchar <<unique>>
+        + phone : varchar(20)
+        + address : text
+        + auth_user_id : int <<FK→User.id>>
+        + created_at : datetime
+    }
+
+    class Staff {
+        + id : int <<PK>>
+        + name : varchar(255)
+        + email : varchar <<unique>>
+        + role : varchar(50)
+        + auth_user_id : int <<FK→User.id>>
+        + created_at : datetime
+    }
+
+    class Manager {
+        + id : int <<PK>>
+        + name : varchar(255)
+        + email : varchar <<unique>>
+        + department : varchar(100)
+        + auth_user_id : int <<FK→User.id>>
+        + created_at : datetime
+    }
+
+    User "1" --> "0..1" Customer : has profile
+    User "1" --> "0..1" Staff    : has profile
+    User "1" --> "0..1" Manager  : has profile
+    User -- Role
+}
+
+' =====================================================================
+' PRODUCT CONTEXT  (book-service + catalog-service)
+' Demonstrates the inheritance pattern required by thesis Ch.2.3
+' =====================================================================
+package "Product Context" <<book-service / catalog-service>> #E6F7FF {
+
+    enum ProductType {
+        BOOK
+        ELECTRONICS
+        FASHION
+    }
+
+    class Category {
+        + id : int <<PK>>
+        + name : varchar(255) <<unique>>
+        + description : text
+        + created_at : datetime
+    }
+
+    class Product {
+        + id : int <<PK>>
+        + name : varchar(255)
+        + price : decimal(10,2)
+        + stock : int
+        + category_id : int <<FK→Category.id>>
+        + description : text
+        + product_type : ProductType
+        + created_at : datetime
+    }
+
+    class Book {
+        + product_id : int <<PK, FK→Product.id>>
+        + author : varchar(255)
+        + publisher : varchar(255)
+        + isbn : varchar(13)
+    }
+
+    class Electronics {
+        + product_id : int <<PK, FK→Product.id>>
+        + brand : varchar(100)
+        + warranty_months : int
+    }
+
+    class Fashion {
+        + product_id : int <<PK, FK→Product.id>>
+        + size : varchar(10)
+        + color : varchar(50)
+        + material : varchar(100)
+    }
+
+    Product "1" -- "1..*" Category : belongs to >
+    Product <|-- Book        : <<inherits>>
+    Product <|-- Electronics : <<inherits>>
+    Product <|-- Fashion     : <<inherits>>
+    Product -- ProductType
+}
+
+' =====================================================================
+' CART CONTEXT  (cart-service)
+' =====================================================================
+package "Cart Context" <<cart-service>> #FFE6E6 {
+
+    class Cart {
+        + id : int <<PK>>
+        + customer_id : int <<unique, ref→Customer.id>>
+        + created_at : datetime
+    }
+
+    class CartItem {
+        + id : int <<PK>>
+        + cart_id : int <<FK→Cart.id>>
+        + book_id : int <<ref→Product.id>>
+        + quantity : int (>=1)
+        --
+        <<unique (cart_id, book_id)>>
+    }
+
+    Cart "1" *-- "0..*" CartItem : <<composition>>
+}
+
+' =====================================================================
+' ORDER CONTEXT  (order-service)
+' =====================================================================
+package "Order Context" <<order-service>> #E8F8F5 {
+
+    enum OrderStatus {
+        PENDING
+        CONFIRMED
+        PAID
+        SHIPPING
+        COMPLETED
+        CANCELLED
+    }
+
+    class Order {
+        + id : int <<PK>>
+        + customer_id : int <<ref→Customer.id>>
+        + total_amount : decimal(10,2)
+        + status : OrderStatus
+        + shipping_address : text
+        + payment_method : varchar(20)
+        + shipping_method : varchar(20)
+        + created_at : datetime
+    }
+
+    class OrderItem {
+        + id : int <<PK>>
+        + order_id : int <<FK→Order.id>>
+        + book_id : int <<ref→Product.id>>
+        + quantity : int (>=1)
+        + price : decimal(10,2)
+    }
+
+    class SagaLog {
+        + id : int <<PK>>
+        + order_id : int <<FK→Order.id>>
+        + step : varchar(50)
+        + status : varchar(20)
+        + details : text
+        + created_at : datetime
+    }
+
+    Order "1" *-- "1..*" OrderItem : <<composition>>
+    Order "1" *-- "0..*" SagaLog   : <<composition>>
+    Order -- OrderStatus
+}
+
+' =====================================================================
+' PAYMENT CONTEXT  (pay-service)
+' =====================================================================
+package "Payment Context" <<pay-service>> #F4ECF7 {
+
+    enum PaymentMethod {
+        CREDIT_CARD
+        PAYPAL
+        COD
+    }
+
+    enum PaymentStatus {
+        RESERVED
+        PENDING
+        COMPLETED
+        FAILED
+    }
+
+    class Payment {
+        + id : int <<PK>>
+        + order_id : int <<ref→Order.id>>
+        + amount : decimal(10,2)
+        + method : PaymentMethod
+        + status : PaymentStatus
+        + created_at : datetime
+    }
+
+    Payment -- PaymentMethod
+    Payment -- PaymentStatus
+}
+
+' =====================================================================
+' SHIPPING CONTEXT  (ship-service)
+' =====================================================================
+package "Shipping Context" <<ship-service>> #FEF5E7 {
+
+    enum ShipmentMethod {
+        STANDARD
+        EXPRESS
+    }
+
+    enum ShipmentStatus {
+        RESERVED
+        PENDING
+        SHIPPED
+        DELIVERED
+    }
+
+    class Shipment {
+        + id : int <<PK>>
+        + order_id : int <<ref→Order.id>>
+        + address : text
+        + method : ShipmentMethod
+        + status : ShipmentStatus
+        + tracking_number : varchar(50)
+        + created_at : datetime
+    }
+
+    Shipment -- ShipmentMethod
+    Shipment -- ShipmentStatus
+}
+
+' =====================================================================
+' REVIEW CONTEXT  (comment-rate-service)
+' =====================================================================
+package "Review Context" <<comment-rate-service>> #EAEDED {
+
+    class Review {
+        + id : int <<PK>>
+        + book_id : int <<ref→Product.id>>
+        + customer_id : int <<ref→Customer.id>>
+        + rating : int (1..5)
+        + comment : text
+        + created_at : datetime
+        --
+        <<unique (book_id, customer_id)>>
+    }
+}
+
+' =====================================================================
+' ADVISORY-CHAT CONTEXT  (advisory-chat-service — RAG + behavior)
+' =====================================================================
+package "Advisory Chat Context" <<advisory-chat-service>> #FDEBD0 {
+
+    enum KBSource {
+        policy
+        faq
+        book_catalog
+        genre_guide
+    }
+
+    enum ChatRole {
+        user
+        assistant
+    }
+
+    enum CustomerSegment {
+        new
+        active
+        loyal
+        at_risk
+        churned
+    }
+
+    class KnowledgeDocument {
+        + id : int <<PK>>
+        + title : varchar(255)
+        + content : text
+        + source : KBSource
+        + embedding : vector(384)
+        + created_at : datetime
+        + updated_at : datetime
+        --
+        <<index HNSW (embedding, cosine)>>
+    }
+
+    class ChatSession {
+        + id : int <<PK>>
+        + customer_id : int <<ref→Customer.id>>
+        + is_active : boolean
+        + created_at : datetime
+    }
+
+    class ChatMessage {
+        + id : int <<PK>>
+        + session_id : int <<FK→ChatSession.id>>
+        + role : ChatRole
+        + content : text
+        + context_used : json
+        + created_at : datetime
+    }
+
+    class CustomerBehaviorSummary {
+        + customer_id : int <<PK, ref→Customer.id>>
+        + total_orders : int
+        + total_spent : decimal(12,2)
+        + avg_order_value : decimal(10,2)
+        + favorite_categories : json
+        + favorite_authors : json
+        + avg_rating_given : decimal(3,2)
+        + purchase_frequency_days : float
+        + last_order_date : datetime
+        + segment : CustomerSegment
+        + updated_at : datetime
+    }
+
+    ChatSession "1" *-- "0..*" ChatMessage : <<composition>>
+    KnowledgeDocument -- KBSource
+    ChatMessage -- ChatRole
+    CustomerBehaviorSummary -- CustomerSegment
+}
+
+' =====================================================================
+' Cross-context references (drawn dashed because each microservice
+' has its OWN database — no real foreign keys cross service boundaries.
+' These are *logical* references resolved through REST calls or events).
+' =====================================================================
+
+Customer  ..> Cart                       : "1 customer ↔ 1 cart"
+Customer  ..> Order                      : "places"
+Customer  ..> Review                     : "writes"
+Customer  ..> ChatSession                : "starts"
+Customer  ..> CustomerBehaviorSummary    : "is summarized as"
+
+Product   ..> CartItem                   : "referenced by book_id"
+Product   ..> OrderItem                  : "referenced by book_id"
+Product   ..> Review                     : "is reviewed via book_id"
+
+Order     ..> Payment                    : "1..1 via order_id"
+Order     ..> Shipment                   : "1..1 via order_id"
+
+note bottom of CartItem
+  **Cross-service reference**
+  CartItem.book_id holds the Product PK
+  (legacy column name "book_id" — semantically
+  it now references any Product type).
+  Resolved via REST: GET /api/products/{id}/
+end note
+
+note right of User
+  **Discriminator pattern**
+  Single User table with `role` field
+  acts as the auth identity.
+  Domain profiles (Customer/Staff/Manager)
+  live in their own bounded contexts.
+end note
+
+@enduml

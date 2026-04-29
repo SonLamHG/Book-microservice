@@ -1,0 +1,325 @@
+@startuml er-diagram
+' =====================================================================
+' Entity-Relationship Diagram — Bookstore Microservices
+' Each microservice owns its own PostgreSQL database (database-per-
+' service). Cross-service "references" are logical only — there are
+' no physical foreign keys across databases.
+'
+' Render: plantuml -tpng er-diagram.puml
+' =====================================================================
+
+title **Bookstore — Per-Service Database Schema**\n(database-per-service principle)
+
+!define PK <b><color:#1B5E20>PK</color></b>
+!define FK <b><color:#0D47A1>FK</color></b>
+!define UQ <b><color:#B71C1C>UQ</color></b>
+
+skinparam shadowing false
+skinparam linetype ortho
+skinparam roundCorner 8
+
+' ─────────────────────────────────────────────────────────────────────
+' auth_db  (auth-service)
+' ─────────────────────────────────────────────────────────────────────
+package "auth_db" <<Database>> #FFF7E6 {
+    entity "app_user" as auth_user {
+        *id : serial PK
+        --
+        *username : varchar(150) UQ
+        *email : varchar UQ
+        *password : varchar(255)
+        *role : varchar(20)  -- CUSTOMER|STAFF|MANAGER|ADMIN
+        *created_at : timestamp
+    }
+}
+
+' ─────────────────────────────────────────────────────────────────────
+' customer_db
+' ─────────────────────────────────────────────────────────────────────
+package "customer_db" <<Database>> #FFF7E6 {
+    entity "app_customer" as customer {
+        *id : serial PK
+        --
+        *name : varchar(255)
+        *email : varchar UQ
+        phone : varchar(20)
+        address : text
+        auth_user_id : int UQ  -- logical→auth_db.app_user.id
+        *created_at : timestamp
+    }
+}
+
+' ─────────────────────────────────────────────────────────────────────
+' staff_db
+' ─────────────────────────────────────────────────────────────────────
+package "staff_db" <<Database>> #FFF7E6 {
+    entity "app_staff" as staff {
+        *id : serial PK
+        --
+        *name : varchar(255)
+        *email : varchar UQ
+        *role : varchar(50)
+        auth_user_id : int UQ  -- logical→auth_db.app_user.id
+        *created_at : timestamp
+    }
+}
+
+' ─────────────────────────────────────────────────────────────────────
+' manager_db
+' ─────────────────────────────────────────────────────────────────────
+package "manager_db" <<Database>> #FFF7E6 {
+    entity "app_manager" as manager {
+        *id : serial PK
+        --
+        *name : varchar(255)
+        *email : varchar UQ
+        department : varchar(100)
+        auth_user_id : int UQ  -- logical→auth_db.app_user.id
+        *created_at : timestamp
+    }
+}
+
+' ─────────────────────────────────────────────────────────────────────
+' catalog_db  (catalog-service — Category master data)
+' ─────────────────────────────────────────────────────────────────────
+package "catalog_db" <<Database>> #E6F7FF {
+    entity "app_category" as category {
+        *id : serial PK
+        --
+        *name : varchar(255) UQ
+        description : text
+        *created_at : timestamp
+    }
+}
+
+' ─────────────────────────────────────────────────────────────────────
+' book_db  (book-service — Product hierarchy)
+' ─────────────────────────────────────────────────────────────────────
+package "book_db" <<Database>> #E6F7FF {
+    entity "app_product" as product {
+        *id : serial PK
+        --
+        *name : varchar(255)
+        *price : decimal(10,2) (>=0)
+        *stock : int (>=0)
+        category_id : int  -- logical→catalog_db.app_category.id
+        description : text
+        *product_type : varchar(20)  -- book|electronics|fashion
+        *created_at : timestamp
+    }
+    entity "app_book" as book {
+        *product_id : int PK FK→product.id (CASCADE)
+        --
+        *author : varchar(255)
+        publisher : varchar(255)
+        isbn : varchar(13)
+    }
+    entity "app_electronics" as elec {
+        *product_id : int PK FK→product.id (CASCADE)
+        --
+        *brand : varchar(100)
+        *warranty_months : int
+    }
+    entity "app_fashion" as fashion {
+        *product_id : int PK FK→product.id (CASCADE)
+        --
+        *size : varchar(10)
+        color : varchar(50)
+        material : varchar(100)
+    }
+
+    product ||--o| book     : 1:0..1
+    product ||--o| elec     : 1:0..1
+    product ||--o| fashion  : 1:0..1
+}
+
+' ─────────────────────────────────────────────────────────────────────
+' cart_db
+' ─────────────────────────────────────────────────────────────────────
+package "cart_db" <<Database>> #FFE6E6 {
+    entity "app_cart" as cart {
+        *id : serial PK
+        --
+        *customer_id : int UQ  -- logical→customer_db.app_customer.id
+        *created_at : timestamp
+    }
+    entity "app_cartitem" as cartitem {
+        *id : serial PK
+        --
+        *cart_id : int FK→cart.id (CASCADE)
+        *book_id : int  -- legacy name; logical→book_db.app_product.id
+        *quantity : int (>=1)
+        --
+        UQ(cart_id, book_id)
+    }
+
+    cart ||--o{ cartitem : composes (1..*)
+}
+
+' ─────────────────────────────────────────────────────────────────────
+' order_db
+' ─────────────────────────────────────────────────────────────────────
+package "order_db" <<Database>> #E8F8F5 {
+    entity "app_order" as o_order {
+        *id : serial PK
+        --
+        *customer_id : int  -- logical→customer_db.app_customer.id
+        *total_amount : decimal(10,2)
+        *status : varchar(20)  -- PENDING|CONFIRMED|PAID|SHIPPING|COMPLETED|CANCELLED
+        shipping_address : text
+        payment_method : varchar(20)
+        shipping_method : varchar(20)
+        *created_at : timestamp
+    }
+    entity "app_orderitem" as o_item {
+        *id : serial PK
+        --
+        *order_id : int FK→order.id (CASCADE)
+        *book_id : int  -- logical→book_db.app_product.id
+        *quantity : int (>=1)
+        *price : decimal(10,2)
+    }
+    entity "app_sagalog" as sagalog {
+        *id : serial PK
+        --
+        *order_id : int FK→order.id (CASCADE)
+        *step : varchar(50)
+        *status : varchar(20)
+        details : text
+        *created_at : timestamp
+    }
+
+    o_order ||--o{ o_item    : composes (1..*)
+    o_order ||--o{ sagalog   : audit (0..*)
+}
+
+' ─────────────────────────────────────────────────────────────────────
+' payment_db
+' ─────────────────────────────────────────────────────────────────────
+package "payment_db" <<Database>> #F4ECF7 {
+    entity "app_payment" as payment {
+        *id : serial PK
+        --
+        *order_id : int  -- logical→order_db.app_order.id
+        *amount : decimal(10,2)
+        *method : varchar(20)  -- CREDIT_CARD|PAYPAL|COD
+        *status : varchar(20)  -- RESERVED|PENDING|COMPLETED|FAILED
+        *created_at : timestamp
+    }
+}
+
+' ─────────────────────────────────────────────────────────────────────
+' shipping_db
+' ─────────────────────────────────────────────────────────────────────
+package "shipping_db" <<Database>> #FEF5E7 {
+    entity "app_shipment" as shipment {
+        *id : serial PK
+        --
+        *order_id : int  -- logical→order_db.app_order.id
+        *address : text
+        *method : varchar(20)  -- STANDARD|EXPRESS
+        *status : varchar(20)  -- RESERVED|PENDING|SHIPPED|DELIVERED
+        tracking_number : varchar(50)
+        *created_at : timestamp
+    }
+}
+
+' ─────────────────────────────────────────────────────────────────────
+' comment_db
+' ─────────────────────────────────────────────────────────────────────
+package "comment_db" <<Database>> #EAEDED {
+    entity "app_review" as review {
+        *id : serial PK
+        --
+        *book_id : int      -- logical→book_db.app_product.id
+        *customer_id : int  -- logical→customer_db.app_customer.id
+        *rating : int (1..5)
+        comment : text
+        *created_at : timestamp
+        --
+        UQ(book_id, customer_id)
+    }
+}
+
+' ─────────────────────────────────────────────────────────────────────
+' advisory_db  (RAG + behavior — uses pgvector extension)
+' ─────────────────────────────────────────────────────────────────────
+package "advisory_db" <<Database>> #FDEBD0 {
+    entity "app_knowledgedocument" as kbdoc {
+        *id : serial PK
+        --
+        *title : varchar(255)
+        *content : text
+        *source : varchar(50)  -- policy|faq|book_catalog|genre_guide
+        *embedding : vector(384)
+        *created_at : timestamp
+        *updated_at : timestamp
+        --
+        HNSW idx (embedding vector_cosine_ops)
+    }
+    entity "app_chatsession" as session {
+        *id : serial PK
+        --
+        *customer_id : int  -- logical→customer_db.app_customer.id
+        *is_active : boolean
+        *created_at : timestamp
+    }
+    entity "app_chatmessage" as message {
+        *id : serial PK
+        --
+        *session_id : int FK→app_chatsession.id (CASCADE)
+        *role : varchar(10)  -- user|assistant
+        *content : text
+        context_used : jsonb
+        *created_at : timestamp
+    }
+    entity "app_customerbehaviorsummary" as behavior {
+        *customer_id : int PK  -- logical→customer_db.app_customer.id
+        --
+        *total_orders : int
+        *total_spent : decimal(12,2)
+        *avg_order_value : decimal(10,2)
+        favorite_categories : jsonb
+        favorite_authors : jsonb
+        avg_rating_given : decimal(3,2)
+        purchase_frequency_days : float
+        last_order_date : timestamp
+        *segment : varchar(20)  -- new|active|loyal|at_risk|churned
+        *updated_at : timestamp
+    }
+
+    session ||--o{ message : composes
+}
+
+' ─────────────────────────────────────────────────────────────────────
+' Cross-database (logical) references — dashed lines
+' ─────────────────────────────────────────────────────────────────────
+auth_user .[#0D47A1]. customer  : "auth_user_id"
+auth_user .[#0D47A1]. staff     : "auth_user_id"
+auth_user .[#0D47A1]. manager   : "auth_user_id"
+
+category  .[#0D47A1]. product   : "category_id"
+
+customer  .[#0D47A1]. cart      : "customer_id"
+customer  .[#0D47A1]. o_order   : "customer_id"
+customer  .[#0D47A1]. review    : "customer_id"
+customer  .[#0D47A1]. session   : "customer_id"
+customer  .[#0D47A1]. behavior  : "customer_id"
+
+product   .[#0D47A1]. cartitem  : "book_id"
+product   .[#0D47A1]. o_item    : "book_id"
+product   .[#0D47A1]. review    : "book_id"
+
+o_order   .[#0D47A1]. payment   : "order_id"
+o_order   .[#0D47A1]. shipment  : "order_id"
+
+note bottom
+  **Legend**
+  • Solid line = real database FK (within the same DB)
+  • Dashed line = logical reference across services
+       (no physical FK; resolved via REST or events)
+  • PK = Primary Key, FK = Foreign Key, UQ = Unique
+  • <i>vector(384)</i> uses pgvector extension; index is HNSW with cosine distance.
+end note
+
+@enduml

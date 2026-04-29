@@ -1,12 +1,24 @@
 # Architecture Diagrams
 
+> **Companion files in this folder**
+> - [`class-diagram.puml`](./class-diagram.puml) — full UML class diagram (8 bounded contexts, 21 classes, inheritance + composition)
+> - [`er-diagram.puml`](./er-diagram.puml) — per-service ERD (12 databases, 21 entities)
+> - [`sequence-diagrams.puml`](./sequence-diagrams.puml) — sequence flows
+> - [`visual-paradigm-guide.md`](./visual-paradigm-guide.md) — how to render and import these into Visual Paradigm for the thesis
+
 ## 1. System Overview
 
 ```
                     ┌─────────────────────────────────┐
-                    │       API Gateway (:8000)        │
-                    │  Django (HTML Templates + Proxy) │
-                    │  JWT Auth + RBAC Middleware       │
+                    │      Nginx Gateway (:8080)       │
+                    │   /api/<svc>/ → microservices    │
+                    │   /            → Django UI       │
+                    └──────────────┬──────────────────┘
+                                   │
+                    ┌──────────────┴──────────────────┐
+                    │      API Gateway (:8000)        │
+                    │  Django (HTML Templates + Proxy)│
+                    │  JWT Auth + RBAC Middleware     │
                     └──────────────┬──────────────────┘
                                    │
         ┌──────────┬──────────┬────┴────┬──────────┬──────────┐
@@ -35,6 +47,41 @@
                │  exchange) │
                └────────────┘
 ```
+
+---
+
+## 1.1 Nginx Gateway — Routing Convention
+
+The Nginx layer is the single public entry point. It does not contain any
+business logic; it only forwards requests based on URL prefix.
+
+| Request path | Routed to | Container |
+|---|---|---|
+| `/api/auth/...` | auth-service | `auth-service:8000/auth/...` |
+| `/api/customers/...` | customer-service | `customer-service:8000/customers/...` |
+| `/api/staff/...` | staff-service | `staff-service:8000/staff/...` |
+| `/api/managers/...` | manager-service | `manager-service:8000/managers/...` |
+| `/api/categories/...` | catalog-service | `catalog-service:8000/categories/...` |
+| `/api/books/...` | book-service | `book-service:8000/books/...` |
+| `/api/products/...` | book-service | `book-service:8000/products/...` |
+| `/api/electronics/...` | book-service | `book-service:8000/electronics/...` |
+| `/api/fashion/...` | book-service | `book-service:8000/fashion/...` |
+| `/api/carts/...` | cart-service | `cart-service:8000/carts/...` |
+| `/api/cart-items/...` | cart-service | `cart-service:8000/cart-items/...` |
+| `/api/orders/...` | order-service | `order-service:8000/orders/...` |
+| `/api/payments/...` | pay-service | `pay-service:8000/payments/...` |
+| `/api/shipments/...` | ship-service | `ship-service:8000/shipments/...` |
+| `/api/reviews/...` | comment-rate-service | `comment-rate-service:8000/reviews/...` |
+| `/api/recommendations/...` | recommender-ai-service (legacy) | `recommender-ai-service:8000/recommendations/...` |
+| `/api/chat/...` `/api/behavior/...` `/api/kb/...` | advisory-chat-service | `advisory-chat-service:8000/...` |
+| `/api/ai/recommend?...` `/api/ai/chatbot` `/api/ai/health` | ai-service (LSTM + Neo4j + FAISS hybrid) | `ai-service:8000/...` |
+| anything else (`/`, `/login/`, `/books/`, `/cart/`, `/admin-products/`, …) | api-gateway (Django UI) | `api-gateway:8000/...` |
+
+Cross-cutting concerns enforced at the Nginx layer:
+- **Rate limiting** — 60 req/min/IP on `/api/*` routes (`limit_req_zone api_limit`).
+- **Logging** — combined access log + per-upstream timing (`upstream=$upstream_addr rt=$request_time`).
+- **gzip** — compresses JSON / HTML over 1 KB.
+- **Forwarded headers** — `X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`, `Host` for downstream services.
 
 ---
 

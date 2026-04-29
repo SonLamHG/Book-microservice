@@ -1,0 +1,16 @@
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+pydantic==2.10.3
+httpx==0.28.0
+requests==2.32.3
+numpy==1.26.4
+
+# Knowledge graph
+neo4j==5.27.0
+
+# RAG / embeddings
+faiss-cpu==1.9.0
+sentence-transformers==3.3.1
+
+# Optional LLM (if OPENAI_API_KEY is set)
+openai==1.57.4

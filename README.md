@@ -1,10 +1,16 @@
 # Bookstore Microservice
 
-A microservices-based online bookstore built with Django and Django REST Framework. The system is composed of 12 independently deployable services communicating via synchronous HTTP and asynchronous messaging (RabbitMQ).
+A microservices-based online bookstore built with Django and Django REST Framework. The system is composed of 14 independently deployable services fronted by an Nginx reverse-proxy gateway, communicating via synchronous HTTP and asynchronous messaging (RabbitMQ).
 
 ## Architecture
 
 ```
+                          ┌──────────────────┐
+                          │  Nginx Gateway   │ :8080
+                          │   /api/* → svcs  │
+                          │   /     → UI     │
+                          └────────┬─────────┘
+                                   │
                           ┌──────────────┐
                           │  API Gateway │ :8000
                           │  (Django UI) │
@@ -40,7 +46,8 @@ A microservices-based online bookstore built with Django and Django REST Framewo
 
 | Service | Port | Description |
 |---------|------|-------------|
-| **API Gateway** | 8000 | Centralized entry point with HTML UI, JWT auth, RBAC, routing, logging, rate limiting |
+| **Nginx Gateway** | 8080 | Public reverse proxy. Routes `/api/<svc>/...` to backend microservices, falls back to Django UI. Rate limit + access logs |
+| **API Gateway** | 8000 | Django UI gateway behind Nginx — HTML templates, JWT auth, RBAC |
 | **Auth Service** | 8012 | User authentication, JWT token generation, role management |
 | **Customer Service** | 8001 | Customer registration and profile management |
 | **Book Service** | 8002 | Book catalog CRUD operations |
@@ -52,7 +59,11 @@ A microservices-based online bookstore built with Django and Django REST Framewo
 | **Payment Service** | 8008 | Payment creation and status tracking |
 | **Shipping Service** | 8009 | Shipment tracking with auto-generated tracking numbers |
 | **Comment-Rate Service** | 8010 | Book reviews and ratings (1-5 scale) |
-| **Recommender AI Service** | 8011 | Book recommendations based on top-rated reviews |
+| **Recommender AI Service** | 8011 | Legacy top-rated recommender (Django) |
+| **Auth Service** | 8012 | JWT issuance + verification |
+| **Advisory Chat Service** | 8013 | RAG chatbot (pgvector + OpenAI) + RFM behavior |
+| **AI Service** | 8014 | Hybrid recommender — LSTM + Neo4j KG + FAISS RAG (FastAPI, thesis Ch.3) |
+| **Neo4j** | 7474 / 7687 | Knowledge graph (HTTP browser / Bolt) |
 | **RabbitMQ** | 5673 / 15673 | Message broker (AMQP / Management UI) |
 
 ## Tech Stack

@@ -58,9 +58,9 @@ class OrderListCreate(APIView):
         order_items_data = []
         for item in cart_items:
             try:
-                br = requests.get(f"{BOOK_SERVICE_URL}/books/{item['book_id']}/", timeout=5)
+                br = requests.get(f"{BOOK_SERVICE_URL}/products/{item['book_id']}/", timeout=5)
                 if br.status_code != 200:
-                    log_saga_step(order, 'FETCH_BOOK_PRICE', 'FAILED', f"Book {item['book_id']} not found")
+                    log_saga_step(order, 'FETCH_BOOK_PRICE', 'FAILED', f"Product {item['book_id']} not found")
                     order.status = 'CANCELLED'
                     order.save()
                     log_saga_step(order, 'COMPENSATE_ORDER', 'SUCCESS', 'Order cancelled due to book not found')

@@ -33,13 +33,14 @@ class AddCartItem(APIView):
         book_id = request.data.get("book_id")
         customer_id = request.data.get("customer_id")
 
-        # Verify book exists via book-service
+        # Verify product exists (any product type — book, electronics, fashion).
+        # The model column is named book_id for legacy reasons; it actually holds the Product PK.
         try:
-            r = requests.get(f"{BOOK_SERVICE_URL}/books/{book_id}/", timeout=5)
+            r = requests.get(f"{BOOK_SERVICE_URL}/products/{book_id}/", timeout=5)
             if r.status_code != 200:
-                return Response({"error": "Book not found"}, status=status.HTTP_404_NOT_FOUND)
+                return Response({"error": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
         except requests.exceptions.RequestException:
-            return Response({"error": "Book service unavailable"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            return Response({"error": "Product service unavailable"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
         try:
             cart = Cart.objects.get(customer_id=customer_id)
