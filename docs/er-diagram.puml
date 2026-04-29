@@ -8,7 +8,7 @@
 ' Render: plantuml -tpng er-diagram.puml
 ' =====================================================================
 
-title **Bookstore — Per-Service Database Schema**\n(database-per-service principle)
+title **Bookstore — Per-Service Database Schema**\n(database-per-service + polyglot persistence: MySQL for User Context, PostgreSQL for everything else)
 
 !define PK <b><color:#1B5E20>PK</color></b>
 !define FK <b><color:#0D47A1>FK</color></b>
@@ -19,9 +19,9 @@ skinparam linetype ortho
 skinparam roundCorner 8
 
 ' ─────────────────────────────────────────────────────────────────────
-' auth_db  (auth-service)
+' auth_db  (auth-service)  ⟶ MySQL 8.4
 ' ─────────────────────────────────────────────────────────────────────
-package "auth_db" <<Database>> #FFF7E6 {
+package "auth_db (MySQL)" <<Database>> #FFF7E6 {
     entity "app_user" as auth_user {
         *id : serial PK
         --
@@ -34,9 +34,9 @@ package "auth_db" <<Database>> #FFF7E6 {
 }
 
 ' ─────────────────────────────────────────────────────────────────────
-' customer_db
+' customer_db ⟶ MySQL 8.4
 ' ─────────────────────────────────────────────────────────────────────
-package "customer_db" <<Database>> #FFF7E6 {
+package "customer_db (MySQL)" <<Database>> #FFF7E6 {
     entity "app_customer" as customer {
         *id : serial PK
         --
@@ -50,9 +50,9 @@ package "customer_db" <<Database>> #FFF7E6 {
 }
 
 ' ─────────────────────────────────────────────────────────────────────
-' staff_db
+' staff_db ⟶ MySQL 8.4
 ' ─────────────────────────────────────────────────────────────────────
-package "staff_db" <<Database>> #FFF7E6 {
+package "staff_db (MySQL)" <<Database>> #FFF7E6 {
     entity "app_staff" as staff {
         *id : serial PK
         --
@@ -65,9 +65,9 @@ package "staff_db" <<Database>> #FFF7E6 {
 }
 
 ' ─────────────────────────────────────────────────────────────────────
-' manager_db
+' manager_db ⟶ MySQL 8.4
 ' ─────────────────────────────────────────────────────────────────────
-package "manager_db" <<Database>> #FFF7E6 {
+package "manager_db (MySQL)" <<Database>> #FFF7E6 {
     entity "app_manager" as manager {
         *id : serial PK
         --
@@ -320,6 +320,13 @@ note bottom
        (no physical FK; resolved via REST or events)
   • PK = Primary Key, FK = Foreign Key, UQ = Unique
   • <i>vector(384)</i> uses pgvector extension; index is HNSW with cosine distance.
+
+  **Polyglot persistence**
+  • <b>MySQL 8.4</b> hosts the four User-Context databases (yellow background).
+  • <b>PostgreSQL 16</b> hosts the eight remaining databases — required for
+    pgvector (advisory_db) and for full-text search via SearchVector (book_db).
+  • Each microservice owns exactly one database; no service ever talks to
+    another service's database directly.
 end note
 
 @enduml

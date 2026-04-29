@@ -52,6 +52,7 @@ docker-compose exec advisory-chat-service python manage.py load_kb --clear
 | AI Service (LSTM + Neo4j + FAISS) | 8014 | 8000 |
 | Neo4j Bolt | 7687 | 7687 |
 | Neo4j Browser | 7474 | 7474 |
+| MySQL (User Context) | 3307 | 3306 |
 | RabbitMQ AMQP | 5673 | 5672 |
 | RabbitMQ UI | 15673 | 15672 |
 | PostgreSQL | 5433 | 5432 |
@@ -63,9 +64,28 @@ docker-compose exec advisory-chat-service python manage.py load_kb --clear
 
 Every service follows the same layout: `<service>/<django_project>/settings.py` + `<service>/app/` containing `models.py`, `views.py`, `serializers.py`, `urls.py`, `messaging.py`, `consumers.py`. The `apps.py` `ready()` hook starts RabbitMQ consumer threads (guarded by `RUN_MAIN == 'true'` to avoid double-spawning in dev).
 
-### Database
+### Database (polyglot persistence)
 
-All services use PostgreSQL via `psycopg2-binary`. Each service gets its own database (created by `data/init-databases.sql`). The API Gateway is the exception: it uses in-memory SQLite (no models, just proxying). The `pgvector/pgvector:pg16` image is used to support vector embeddings in advisory-chat-service.
+**Two RDBMS** following the SoAD thesis Ch.2.10.4 split:
+
+| Engine | Image | Services / DBs | Why |
+|---|---|---|---|
+| **MySQL 8.4** | `mysql:8.4` (host port 3307) | auth-service (auth_db), customer-service (customer_db), staff-service (staff_db), manager-service (manager_db) | User Context — simple relational schema; thesis sample explicitly uses MySQL for User Service |
+| **PostgreSQL 16** | `pgvector/pgvector:pg16` (host port 5433) | catalog (catalog_db), book (book_db), cart (cart_db), order (order_db), pay (payment_db), ship (shipping_db), comment-rate (comment_db), advisory-chat (advisory_db) | Product/Order/Advisory contexts — JSON fields, full-text search (`SearchVector`/`SearchQuery`), pgvector embeddings, complex inheritance |
+
+Driver wiring:
+- The 4 MySQL services use **PyMySQL** as a `MySQLdb` shim (pure Python, no native libs needed). Top of `settings.py` calls `pymysql.install_as_MySQLdb()` with a version stub.
+- The 8 PostgreSQL services keep **psycopg2-binary**.
+
+DB bootstrap:
+- `data/init-databases.sql` is mounted into `postgres` and creates the 8 PG databases.
+- `data/init-mysql.sql` is mounted into `mysql` and creates the 4 MySQL databases (utf8mb4 / unicode_ci).
+
+Seeding:
+- `data/seed_data.sql` — sections for the 8 PG-hosted services (`ON CONFLICT … DO NOTHING`).
+- `data/seed_data_mysql.sql` — sections for the 3 MySQL-hosted services (`INSERT IGNORE`). Auth users are created through Django's password hasher in `seed_all.sh`, not raw SQL.
+
+The API Gateway service is the exception: it uses in-memory SQLite (no models, just session proxying).
 
 ### Inter-Service HTTP
 
@@ -118,7 +138,8 @@ See `data/accounts.md` for full list. Key accounts: `admin/admin123` (ADMIN), `m
 
 ## Key Dependencies
 
-- **All services:** Django 4.2, djangorestframework, psycopg2-binary
+- **PostgreSQL services (8):** Django 4.2, djangorestframework, psycopg2-binary
+- **MySQL services (4 — User Context: auth, customer, staff, manager):** Django 4.2, djangorestframework, PyMySQL, cryptography
 - **Event-driven services:** pika (RabbitMQ client)
 - **API Gateway:** django-redis (caching, rate limiting, session token cache)
 - **Advisory Chat:** openai, sentence-transformers, pgvector

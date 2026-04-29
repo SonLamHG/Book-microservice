@@ -1,8 +1,6 @@
--- Create separate databases for each microservice
-CREATE DATABASE auth_db;
-CREATE DATABASE customer_db;
-CREATE DATABASE staff_db;
-CREATE DATABASE manager_db;
+-- PostgreSQL — bootstrap per-service databases.
+-- The four User-Context databases (auth_db, customer_db, staff_db,
+-- manager_db) live on the MySQL container instead — see data/init-mysql.sql.
 CREATE DATABASE catalog_db;
 CREATE DATABASE book_db;
 CREATE DATABASE cart_db;

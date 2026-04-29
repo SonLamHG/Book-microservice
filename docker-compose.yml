@@ -28,6 +28,31 @@ services:
       timeout: 5s
       retries: 5
 
+  # MySQL hosts the four User-Context databases (auth, customer, staff,
+  # manager). PostgreSQL keeps the rest. This polyglot persistence split
+  # follows DDD: User Context = simple relational data → MySQL;
+  # Product/Order/Advisory contexts = complex relations + JSON + pgvector
+  # → PostgreSQL. Per the SoAD thesis Ch.2.10.4 sample.
+  mysql:
+    image: mysql:8.4
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=caching_sha2_password
+    environment:
+      MYSQL_ROOT_PASSWORD: bookstore-mysql
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./data/init-mysql.sql:/docker-entrypoint-initdb.d/init-mysql.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pbookstore-mysql"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
   redis:
     image: redis:7-alpine
     ports:
@@ -46,12 +71,12 @@ services:
       - "8001:8000"
     environment:
       DB_NAME: customer_db
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DB_HOST: postgres
-      DB_PORT: "5432"
+      DB_USER: root
+      DB_PASSWORD: bookstore-mysql
+      DB_HOST: mysql
+      DB_PORT: "3306"
     depends_on:
-      postgres:
+      mysql:
         condition: service_healthy
       cart-service:
         condition: service_started
@@ -64,12 +89,12 @@ services:
       - "8004:8000"
     environment:
       DB_NAME: staff_db
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DB_HOST: postgres
-      DB_PORT: "5432"
+      DB_USER: root
+      DB_PASSWORD: bookstore-mysql
+      DB_HOST: mysql
+      DB_PORT: "3306"
     depends_on:
-      postgres:
+      mysql:
         condition: service_healthy
       rabbitmq:
         condition: service_started
@@ -80,12 +105,12 @@ services:
       - "8005:8000"
     environment:
       DB_NAME: manager_db
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DB_HOST: postgres
-      DB_PORT: "5432"
+      DB_USER: root
+      DB_PASSWORD: bookstore-mysql
+      DB_HOST: mysql
+      DB_PORT: "3306"
     depends_on:
-      postgres:
+      mysql:
         condition: service_healthy
       rabbitmq:
         condition: service_started
@@ -227,12 +252,12 @@ services:
       - "8012:8000"
     environment:
       DB_NAME: auth_db
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DB_HOST: postgres
-      DB_PORT: "5432"
+      DB_USER: root
+      DB_PASSWORD: bookstore-mysql
+      DB_HOST: mysql
+      DB_PORT: "3306"
     depends_on:
-      postgres:
+      mysql:
         condition: service_healthy
       rabbitmq:
         condition: service_started
@@ -376,6 +401,7 @@ services:
 volumes:
   rabbitmq_data:
   postgres_data:
+  mysql_data:
   redis_data:
   neo4j_data:
   ai_service_data:

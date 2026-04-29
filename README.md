@@ -65,6 +65,8 @@ A microservices-based online bookstore built with Django and Django REST Framewo
 | **AI Service** | 8014 | Hybrid recommender — LSTM + Neo4j KG + FAISS RAG (FastAPI, thesis Ch.3) |
 | **Neo4j** | 7474 / 7687 | Knowledge graph (HTTP browser / Bolt) |
 | **RabbitMQ** | 5673 / 15673 | Message broker (AMQP / Management UI) |
+| **PostgreSQL** | 5433 | Database for 8 contexts (Product, Cart, Order, Payment, Shipping, Review, Catalog, Advisory) |
+| **MySQL** | 3307 | Database for 4 User Context services (auth, customer, staff, manager) |
 
 ## Tech Stack
 

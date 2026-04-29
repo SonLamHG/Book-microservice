@@ -85,6 +85,24 @@ Cross-cutting concerns enforced at the Nginx layer:
 
 ---
 
+## 1.2 Polyglot Persistence — MySQL vs PostgreSQL
+
+Per SoAD thesis Ch.2.10.4, the platform deliberately uses two different
+RDBMS engines aligned with bounded contexts:
+
+| Engine | Host port | Services / databases | Reason |
+|---|---|---|---|
+| **MySQL 8.4** | 3307 | auth-service / `auth_db`<br>customer-service / `customer_db`<br>staff-service / `staff_db`<br>manager-service / `manager_db` | User Context — simple relational schema (single flat table per service). Thesis sample explicitly puts User Service on MySQL ("phổ biến, phù hợp authentication"). |
+| **PostgreSQL 16 (pgvector)** | 5433 | catalog / `catalog_db`<br>book / `book_db`<br>cart / `cart_db`<br>order / `order_db`<br>pay / `payment_db`<br>ship / `shipping_db`<br>comment-rate / `comment_db`<br>advisory-chat / `advisory_db` | Mixed needs: pgvector for RAG embeddings (advisory_db), `SearchVector`/`SearchRank` full-text search (book_db), `jsonb` columns (advisory behavior summary), complex inheritance (Product/Book/Electronics/Fashion). |
+
+Wiring details:
+- MySQL services use **PyMySQL** as a `MySQLdb` shim (`pymysql.install_as_MySQLdb()` at top of `settings.py`); pure-Python, no native libs.
+- PostgreSQL services keep **psycopg2-binary**.
+- DB bootstrap split into two files: `data/init-databases.sql` (PG) and `data/init-mysql.sql` (MySQL).
+- Seed data forked: `seed_data.sql` (PG, `ON CONFLICT … DO NOTHING`) + `seed_data_mysql.sql` (MySQL, `INSERT IGNORE`).
+
+---
+
 ## 2. Inter-Service Communication
 
 ```

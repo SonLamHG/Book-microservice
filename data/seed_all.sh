@@ -3,6 +3,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SQL_FILE="$SCRIPT_DIR/seed_data.sql"
+SQL_FILE_MYSQL="$SCRIPT_DIR/seed_data_mysql.sql"
 
 echo "=== Bookstore Microservice - Seed Data ==="
 echo ""
@@ -61,6 +62,25 @@ seed_service() {
     echo "  Done."
 }
 
+# Seed a User-Context section (customer/staff/manager) against MySQL.
+seed_service_mysql() {
+    local service_name="$1"
+    local section_name="$2"
+    local db_name="$3"
+
+    local sql
+    sql=$(sed -n "/^-- ========== ${section_name} ==========$/,/^-- ==========/{ /^-- ==========/d; p; }" "$SQL_FILE_MYSQL")
+
+    if [ -z "$sql" ]; then
+        echo "  WARNING: No SQL found for section '${section_name}' in MySQL seed file"
+        return 1
+    fi
+
+    echo "$sql" | docker-compose exec -T mysql mysql -uroot -pbookstore-mysql --default-character-set=utf8mb4 "$db_name" 2>&1 \
+        | grep -v "Warning.*password" || true
+    echo "  Done."
+}
+
 # -------------------------------------------------------
 # Phase 2: Catalog Service (categories)
 # -------------------------------------------------------
@@ -74,12 +94,12 @@ echo "[3/8] Seeding book-service (books)..."
 seed_service "book-service" "book-service" "book_db"
 
 # -------------------------------------------------------
-# Phase 4: Customer / Staff / Manager
+# Phase 4: Customer / Staff / Manager (MySQL — User Context)
 # -------------------------------------------------------
-echo "[4/8] Seeding customer-service, staff-service, manager-service..."
-seed_service "customer-service" "customer-service" "customer_db"
-seed_service "staff-service" "staff-service" "staff_db"
-seed_service "manager-service" "manager-service" "manager_db"
+echo "[4/8] Seeding customer-service, staff-service, manager-service (MySQL)..."
+seed_service_mysql "customer-service" "customer-service" "customer_db"
+seed_service_mysql "staff-service"    "staff-service"    "staff_db"
+seed_service_mysql "manager-service"  "manager-service"  "manager_db"
 
 # -------------------------------------------------------
 # Phase 5: Cart Service
@@ -127,12 +147,11 @@ END \$\$;
     echo "  $db_name: sequences reset"
 }
 
-reset_sequences "auth_db"
+# Note: auth_db / customer_db / staff_db / manager_db live on MySQL —
+# InnoDB advances AUTO_INCREMENT past explicit IDs automatically, so no
+# manual reset is needed for those.
 reset_sequences "catalog_db"
 reset_sequences "book_db"
-reset_sequences "customer_db"
-reset_sequences "staff_db"
-reset_sequences "manager_db"
 reset_sequences "cart_db"
 reset_sequences "order_db"
 reset_sequences "payment_db"
