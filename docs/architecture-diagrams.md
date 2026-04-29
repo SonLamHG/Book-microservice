@@ -62,10 +62,10 @@ business logic; it only forwards requests based on URL prefix.
 | `/api/staff/...` | staff-service | `staff-service:8000/staff/...` |
 | `/api/managers/...` | manager-service | `manager-service:8000/managers/...` |
 | `/api/categories/...` | catalog-service | `catalog-service:8000/categories/...` |
-| `/api/books/...` | book-service | `book-service:8000/books/...` |
-| `/api/products/...` | book-service | `book-service:8000/products/...` |
-| `/api/electronics/...` | book-service | `book-service:8000/electronics/...` |
-| `/api/fashion/...` | book-service | `book-service:8000/fashion/...` |
+| `/api/books/...` | product-service | `product-service:8000/books/...` |
+| `/api/products/...` | product-service | `product-service:8000/products/...` |
+| `/api/electronics/...` | product-service | `product-service:8000/electronics/...` |
+| `/api/fashion/...` | product-service | `product-service:8000/fashion/...` |
 | `/api/carts/...` | cart-service | `cart-service:8000/carts/...` |
 | `/api/cart-items/...` | cart-service | `cart-service:8000/cart-items/...` |
 | `/api/orders/...` | order-service | `order-service:8000/orders/...` |
@@ -129,7 +129,7 @@ RDBMS engines aligned with bounded contexts:
 | Engine | Host port | Services / databases | Reason |
 |---|---|---|---|
 | **MySQL 8.4** | 3307 | auth-service / `auth_db`<br>customer-service / `customer_db`<br>staff-service / `staff_db`<br>manager-service / `manager_db` | User Context — simple relational schema (single flat table per service). Thesis sample explicitly puts User Service on MySQL ("phổ biến, phù hợp authentication"). |
-| **PostgreSQL 16 (pgvector)** | 5433 | catalog / `catalog_db`<br>book / `book_db`<br>cart / `cart_db`<br>order / `order_db`<br>pay / `payment_db`<br>ship / `shipping_db`<br>comment-rate / `comment_db`<br>advisory-chat / `advisory_db` | Mixed needs: pgvector for RAG embeddings (advisory_db), `SearchVector`/`SearchRank` full-text search (book_db), `jsonb` columns (advisory behavior summary), complex inheritance (Product/Book/Electronics/Fashion). |
+| **PostgreSQL 16 (pgvector)** | 5433 | catalog / `catalog_db`<br>product / `product_db`<br>cart / `cart_db`<br>order / `order_db`<br>pay / `payment_db`<br>ship / `shipping_db`<br>comment-rate / `comment_db`<br>advisory-chat / `advisory_db` | Mixed needs: pgvector for RAG embeddings (advisory_db), `SearchVector`/`SearchRank` full-text search (product_db), `jsonb` columns (advisory behavior summary), complex inheritance (Product/Book/Electronics/Fashion). |
 
 Wiring details:
 - MySQL services use **PyMySQL** as a `MySQLdb` shim (`pymysql.install_as_MySQLdb()` at top of `settings.py`); pure-Python, no native libs.
@@ -299,7 +299,7 @@ Legend: ──> HTTP (sync)   ~~~> RabbitMQ event (async)
 │                     └──────────────┘   └───────────┘  │
 │                                                        │
 │  External Call:                                        │
-│  GET book-service:8000/books/{id}/ (on add)            │
+│  GET product-service:8000/books/{id}/ (on add)            │
 └───────────────────────────────────────────────────────┘
 ```
 
@@ -516,7 +516,7 @@ Legend: ──> HTTP (sync)   ~~~> RabbitMQ event (async)
 │  No local database        │  HTTP Proxy to:            │
 │  No models                │                            │
 │                           ├─> customer-service :8001   │
-│                           ├─> book-service     :8002   │
+│                           ├─> product-service     :8002   │
 │                           ├─> cart-service     :8003   │
 │                           ├─> staff-service    :8004   │
 │                           ├─> manager-service  :8005   │
@@ -580,7 +580,7 @@ Customer    API Gateway    Order Service    Cart Service    Book Service    Pay 
 │  │     Identity     │  │     Catalog      │  │     Ordering     │  │
 │  │                  │  │                  │  │                  │  │
 │  │ auth-service     │  │ catalog-service  │  │  cart-service    │  │
-│  │ customer-service │  │ book-service     │  │  order-service   │  │
+│  │ customer-service │  │ product-service     │  │  order-service   │  │
 │  │ staff-service    │  │                  │  │                  │  │
 │  │ manager-service  │  │                  │  │                  │  │
 │  └──────────────────┘  └──────────────────┘  └──────────────────┘  │
@@ -647,7 +647,7 @@ Customer    API Gateway    Order Service    Cart Service    Book Service    Pay 
 │  Startup Order (depends_on):                           │
 │  rabbitmq -> auth, customer, staff, manager, cart,     │
 │              order, pay, ship services                  │
-│  book-service -> cart-service -> customer-service      │
+│  product-service -> cart-service -> customer-service      │
 │  pay-service, ship-service -> order-service            │
 │  comment-rate-service -> recommender-ai-service        │
 │  all services -> api-gateway                           │

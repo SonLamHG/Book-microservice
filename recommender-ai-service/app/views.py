@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 import requests
 
-BOOK_SERVICE_URL = "http://book-service:8000"
+PRODUCT_SERVICE_URL = "http://product-service:8000"
 COMMENT_RATE_SERVICE_URL = "http://comment-rate-service:8000"
 
 
@@ -11,7 +11,7 @@ class Recommendations(APIView):
     """
     Simple recommendation engine:
     - Get top-rated books from comment-rate-service
-    - Fetch book details from book-service
+    - Fetch book details from product-service
     - Return recommended books
     """
     def get(self, request, customer_id):
@@ -32,7 +32,7 @@ class Recommendations(APIView):
         for item in top_rated:
             try:
                 br = requests.get(
-                    f"{BOOK_SERVICE_URL}/books/{item['book_id']}/",
+                    f"{PRODUCT_SERVICE_URL}/books/{item['book_id']}/",
                     timeout=5,
                 )
                 if br.status_code == 200:
@@ -45,7 +45,7 @@ class Recommendations(APIView):
         # If not enough rated books, fill with latest books
         if len(recommended_books) < limit:
             try:
-                br = requests.get(f"{BOOK_SERVICE_URL}/books/", timeout=5)
+                br = requests.get(f"{PRODUCT_SERVICE_URL}/books/", timeout=5)
                 if br.status_code == 200:
                     all_books = br.json()
                     existing_ids = {b['id'] for b in recommended_books}

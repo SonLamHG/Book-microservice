@@ -10,4 +10,4 @@ class AppConfig(AppConfig):
         if os.environ.get('RUN_MAIN') == 'true':
             from app.messaging import start_consumer
             from app.consumers import BINDINGS
-            start_consumer('book-service', BINDINGS)
+            start_consumer('product-service', BINDINGS)

@@ -7,7 +7,7 @@ import json
 CUSTOMER_SERVICE_URL = "http://customer-service:8000"
 STAFF_SERVICE_URL = "http://staff-service:8000"
 MANAGER_SERVICE_URL = "http://manager-service:8000"
-BOOK_SERVICE_URL = "http://book-service:8000"
+PRODUCT_SERVICE_URL = "http://product-service:8000"
 CATALOG_SERVICE_URL = "http://catalog-service:8000"
 CART_SERVICE_URL = "http://cart-service:8000"
 ORDER_SERVICE_URL = "http://order-service:8000"
@@ -37,7 +37,7 @@ def _fetch_customers():
 
 
 def _fetch_books():
-    return _fetch_json(f"{BOOK_SERVICE_URL}/books/")
+    return _fetch_json(f"{PRODUCT_SERVICE_URL}/books/")
 
 
 def _paginate(items, request, per_page=10):
@@ -83,7 +83,7 @@ def book_list(request):
         params['search'] = search
     if params:
         try:
-            r = requests.get(f"{BOOK_SERVICE_URL}/books/", params=params, timeout=5)
+            r = requests.get(f"{PRODUCT_SERVICE_URL}/books/", params=params, timeout=5)
             books = r.json() if r.status_code == 200 else []
         except Exception:
             books = []
@@ -117,7 +117,7 @@ def book_create(request):
             'category_id': int(category_id) if category_id else None,
         }
         try:
-            r = requests.post(f"{BOOK_SERVICE_URL}/books/", json=data, timeout=5)
+            r = requests.post(f"{PRODUCT_SERVICE_URL}/books/", json=data, timeout=5)
             if r.status_code == 201:
                 _flash(request, f'Book "{data["title"]}" created successfully!')
             else:
@@ -142,7 +142,7 @@ def book_edit(request, pk):
             'category_id': int(category_id) if category_id else None,
         }
         try:
-            r = requests.put(f"{BOOK_SERVICE_URL}/books/{pk}/", json=data, timeout=5)
+            r = requests.put(f"{PRODUCT_SERVICE_URL}/books/{pk}/", json=data, timeout=5)
             if r.status_code == 200:
                 _flash(request, 'Book updated!')
             else:
@@ -153,7 +153,7 @@ def book_edit(request, pk):
 
     book_data = None
     try:
-        r = requests.get(f"{BOOK_SERVICE_URL}/books/{pk}/", timeout=5)
+        r = requests.get(f"{PRODUCT_SERVICE_URL}/books/{pk}/", timeout=5)
         if r.status_code == 200:
             book_data = r.json()
     except Exception:
@@ -168,7 +168,7 @@ def book_edit(request, pk):
 def book_delete(request, pk):
     if request.method == 'POST':
         try:
-            r = requests.delete(f"{BOOK_SERVICE_URL}/books/{pk}/", timeout=5)
+            r = requests.delete(f"{PRODUCT_SERVICE_URL}/books/{pk}/", timeout=5)
             if r.status_code == 204:
                 _flash(request, 'Book deleted.')
             else:
@@ -266,7 +266,7 @@ def view_cart(request, customer_id):
     cart_total = 0
     for item in items if isinstance(items, list) else []:
         try:
-            br = requests.get(f"{BOOK_SERVICE_URL}/books/{item['book_id']}/", timeout=5)
+            br = requests.get(f"{PRODUCT_SERVICE_URL}/books/{item['book_id']}/", timeout=5)
             if br.status_code == 200:
                 item['book'] = br.json()
                 price = float(item['book'].get('price', 0))
@@ -378,7 +378,7 @@ def order_list(request, customer_id):
     for order in orders:
         for item in order.get('items', []):
             try:
-                br = requests.get(f"{BOOK_SERVICE_URL}/books/{item['book_id']}/", timeout=5)
+                br = requests.get(f"{PRODUCT_SERVICE_URL}/books/{item['book_id']}/", timeout=5)
                 if br.status_code == 200:
                     item['book'] = br.json()
             except Exception:
@@ -438,7 +438,7 @@ def book_reviews(request, book_id):
 
     book_data = None
     try:
-        br = requests.get(f"{BOOK_SERVICE_URL}/books/{book_id}/", timeout=5)
+        br = requests.get(f"{PRODUCT_SERVICE_URL}/books/{book_id}/", timeout=5)
         if br.status_code == 200:
             book_data = br.json()
     except Exception:
@@ -687,7 +687,7 @@ def category_edit(request, pk):
 
 def category_delete(request, pk):
     if request.method == 'POST':
-        associated_books = _fetch_json(f"{BOOK_SERVICE_URL}/books/?category_id={pk}")
+        associated_books = _fetch_json(f"{PRODUCT_SERVICE_URL}/books/?category_id={pk}")
         book_count = len(associated_books) if isinstance(associated_books, list) else 0
         try:
             r = requests.delete(f"{CATALOG_SERVICE_URL}/categories/{pk}/", timeout=5)

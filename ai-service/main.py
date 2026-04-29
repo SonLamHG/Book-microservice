@@ -2,7 +2,7 @@
 
 Brings up:
   - LSTM model (loaded from disk or trained on synthetic data)
-  - Neo4j Knowledge Graph (seeded from book-service + order-service)
+  - Neo4j Knowledge Graph (seeded from product-service + order-service)
   - FAISS RAG index (built from product descriptions)
   - Hybrid recommender (blends all three)
 

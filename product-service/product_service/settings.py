@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = 'dev-secret-key-book_service'
+SECRET_KEY = 'dev-secret-key-product_service'
 DEBUG = True
 ALLOWED_HOSTS = ['*']
 
@@ -19,13 +19,13 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
 ]
 
-ROOT_URLCONF = 'book_service.urls'
-WSGI_APPLICATION = 'book_service.wsgi.application'
+ROOT_URLCONF = 'product_service.urls'
+WSGI_APPLICATION = 'product_service.wsgi.application'
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'book_db'),
+        'NAME': os.environ.get('DB_NAME', 'product_db'),
         'USER': os.environ.get('DB_USER', 'postgres'),
         'PASSWORD': os.environ.get('DB_PASSWORD', 'postgres'),
         'HOST': os.environ.get('DB_HOST', 'localhost'),

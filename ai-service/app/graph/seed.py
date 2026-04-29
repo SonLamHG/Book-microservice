@@ -1,5 +1,5 @@
 """Seed the Knowledge Graph with User/Product nodes and BOUGHT/VIEWED/SIMILAR
-edges built from the existing seed data in book-service and order-service."""
+edges built from the existing seed data in product-service and order-service."""
 from __future__ import annotations
 
 import logging

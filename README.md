@@ -50,7 +50,7 @@ A microservices-based online bookstore built with Django and Django REST Framewo
 | **API Gateway** | 8000 | Django UI gateway behind Nginx — HTML templates, JWT auth, RBAC |
 | **Auth Service** | 8012 | User authentication, JWT token generation, role management |
 | **Customer Service** | 8001 | Customer registration and profile management |
-| **Book Service** | 8002 | Book catalog CRUD operations |
+| **Product Service** | 8002 | Product catalog CRUD (Book + Electronics + Fashion) |
 | **Cart Service** | 8003 | Shopping cart management with book validation |
 | **Staff Service** | 8004 | Staff member management |
 | **Manager Service** | 8005 | Manager information management |
@@ -106,7 +106,7 @@ docker-compose up --build
 ### Run a Single Service (Development)
 
 ```bash
-cd book-service
+cd product-service
 pip install -r requirements.txt
 python manage.py migrate --run-syncdb
 python manage.py runserver 0.0.0.0:8002
@@ -310,7 +310,7 @@ Order Service     ~~order.created~~~~~~~~~~~~> (logged, future use)
 Book_store_microservice/
 ├── api-gateway/            # Centralized UI, routing, JWT auth, RBAC
 ├── auth-service/           # User authentication & JWT
-├── book-service/           # Book catalog
+├── product-service/        # Product catalog (Book + Electronics + Fashion)
 ├── cart-service/           # Shopping cart
 ├── customer-service/       # Customer profiles
 ├── order-service/          # Order orchestration (Saga)

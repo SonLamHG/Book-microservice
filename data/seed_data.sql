@@ -11,7 +11,7 @@ INSERT INTO app_category (id, name, description, created_at) VALUES
 (9, 'Thoi trang Nu', 'Ao, quan, giay nu', NOW())
 ON CONFLICT (id) DO NOTHING;
 
--- ========== book-service ==========
+-- ========== product-service ==========
 -- Step 1: insert into the shared Product table (15 books + 6 electronics + 6 fashion).
 INSERT INTO app_product (id, name, price, stock, category_id, description, product_type, created_at) VALUES
 -- Books (1..15)

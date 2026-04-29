@@ -149,10 +149,10 @@ CREATE TABLE app_book (
 Cách kiểm tra schema thực tế:
 
 ```bash
-docker-compose exec postgres psql -U postgres -d book_db -c "\d app_product"
-docker-compose exec postgres psql -U postgres -d book_db -c "\d app_book"
-docker-compose exec postgres psql -U postgres -d book_db -c "\d app_electronics"
-docker-compose exec postgres psql -U postgres -d book_db -c "\d app_fashion"
+docker-compose exec postgres psql -U postgres -d product_db -c "\d app_product"
+docker-compose exec postgres psql -U postgres -d product_db -c "\d app_book"
+docker-compose exec postgres psql -U postgres -d product_db -c "\d app_electronics"
+docker-compose exec postgres psql -U postgres -d product_db -c "\d app_fashion"
 ```
 
 ---
@@ -164,7 +164,7 @@ docker-compose exec postgres psql -U postgres -d book_db -c "\d app_fashion"
 - [ ] Có Composition: `Order` ◆— `OrderItem`, `Cart` ◆— `CartItem`
 - [ ] Có Association với cardinality (`1..*`, `1..1`, `0..1`)
 - [ ] Mapping rõ ràng sang database schema (SQL CREATE TABLE)
-- [ ] Database tách riêng từng service (`book_db`, `cart_db`, `order_db`, …)
+- [ ] Database tách riêng từng service (`product_db`, `cart_db`, `order_db`, …)
 - [ ] (Khi hoàn thành task #4) Sử dụng cả MySQL và PostgreSQL
 
 ---

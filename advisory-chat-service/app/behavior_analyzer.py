@@ -1,6 +1,6 @@
 """
 Rule-based customer behavior analyzer.
-Fetches data from order-service, comment-rate-service, book-service
+Fetches data from order-service, comment-rate-service, product-service
 and computes RFM segmentation + preferences.
 """
 import logging
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 ORDER_SERVICE_URL = getattr(settings, 'ORDER_SERVICE_URL', 'http://order-service:8000')
 COMMENT_RATE_SERVICE_URL = getattr(settings, 'COMMENT_RATE_SERVICE_URL', 'http://comment-rate-service:8000')
-BOOK_SERVICE_URL = getattr(settings, 'BOOK_SERVICE_URL', 'http://book-service:8000')
+PRODUCT_SERVICE_URL = getattr(settings, 'PRODUCT_SERVICE_URL', 'http://product-service:8000')
 CATALOG_SERVICE_URL = getattr(settings, 'CATALOG_SERVICE_URL', 'http://catalog-service:8000')
 
 REQUEST_TIMEOUT = 5
@@ -113,7 +113,7 @@ def analyze_customer_behavior(customer_id):
 
     book_details_cache = {}
     for book_id in set(book_ids_purchased):
-        book_data = _fetch_json(f"{BOOK_SERVICE_URL}/books/{book_id}/")
+        book_data = _fetch_json(f"{PRODUCT_SERVICE_URL}/books/{book_id}/")
         if book_data:
             book_details_cache[book_id] = book_data
             author = book_data.get('author')

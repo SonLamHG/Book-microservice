@@ -131,12 +131,12 @@ services:
       rabbitmq:
         condition: service_started
 
-  book-service:
-    build: ./book-service
+  product-service:
+    build: ./product-service
     ports:
       - "8002:8000"
     environment:
-      DB_NAME: book_db
+      DB_NAME: product_db
       DB_USER: postgres
       DB_PASSWORD: postgres
       DB_HOST: postgres
@@ -163,7 +163,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      book-service:
+      product-service:
         condition: service_started
       rabbitmq:
         condition: service_started
@@ -183,7 +183,7 @@ services:
         condition: service_healthy
       cart-service:
         condition: service_started
-      book-service:
+      product-service:
         condition: service_started
       pay-service:
         condition: service_started
@@ -243,7 +243,7 @@ services:
     ports:
       - "8011:8000"
     depends_on:
-      - book-service
+      - product-service
       - comment-rate-service
 
   auth-service:
@@ -286,7 +286,7 @@ services:
     ports:
       - "8014:8000"
     environment:
-      BOOK_SERVICE_URL:         http://book-service:8000
+      PRODUCT_SERVICE_URL:      http://product-service:8000
       ORDER_SERVICE_URL:        http://order-service:8000
       COMMENT_RATE_SERVICE_URL: http://comment-rate-service:8000
       CATALOG_SERVICE_URL:      http://catalog-service:8000
@@ -302,7 +302,7 @@ services:
     depends_on:
       neo4j:
         condition: service_healthy
-      book-service:
+      product-service:
         condition: service_started
       order-service:
         condition: service_started
@@ -323,7 +323,7 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_started
-      book-service:
+      product-service:
         condition: service_started
       order-service:
         condition: service_started
@@ -349,7 +349,7 @@ services:
         condition: service_started
       catalog-service:
         condition: service_started
-      book-service:
+      product-service:
         condition: service_started
       cart-service:
         condition: service_started
@@ -449,7 +449,7 @@ services:
       - staff-service
       - manager-service
       - catalog-service
-      - book-service
+      - product-service
       - cart-service
       - order-service
       - pay-service

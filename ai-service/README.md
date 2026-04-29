@@ -29,7 +29,7 @@ docker-compose up --build -d
 
 # Wait ~60s on first run — sentence-transformers downloads the embedding
 # model (~80 MB) on the first request, and the LSTM trains on synthetic
-# sequences derived from book-service + order-service data.
+# sequences derived from product-service + order-service data.
 
 # Sanity check
 curl http://localhost:8014/health
@@ -49,7 +49,7 @@ curl -X POST http://localhost:8080/api/ai/chatbot \
 
 | Var | Default | What it does |
 |---|---|---|
-| `BOOK_SERVICE_URL` | `http://book-service:8000` | Source of products at startup |
+| `PRODUCT_SERVICE_URL` | `http://product-service:8000` | Source of products at startup |
 | `ORDER_SERVICE_URL` | `http://order-service:8000` | Source of co-purchase signal |
 | `NEO4J_URI` / `NEO4J_USER` / `NEO4J_PASSWORD` | `bolt://neo4j:7687` / `neo4j` / `bookstore-secret` | Knowledge Graph |
 | `LSTM_HIDDEN_DIM` | `64` | LSTM hidden state size |

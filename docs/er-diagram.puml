@@ -93,9 +93,9 @@ package "catalog_db" <<Database>> #E6F7FF {
 }
 
 ' ─────────────────────────────────────────────────────────────────────
-' book_db  (book-service — Product hierarchy)
+' product_db  (product-service — Product hierarchy)
 ' ─────────────────────────────────────────────────────────────────────
-package "book_db" <<Database>> #E6F7FF {
+package "product_db" <<Database>> #E6F7FF {
     entity "app_product" as product {
         *id : serial PK
         --
@@ -147,7 +147,7 @@ package "cart_db" <<Database>> #FFE6E6 {
         *id : serial PK
         --
         *cart_id : int FK→cart.id (CASCADE)
-        *book_id : int  -- legacy name; logical→book_db.app_product.id
+        *book_id : int  -- legacy name; logical→product_db.app_product.id
         *quantity : int (>=1)
         --
         UQ(cart_id, book_id)
@@ -175,7 +175,7 @@ package "order_db" <<Database>> #E8F8F5 {
         *id : serial PK
         --
         *order_id : int FK→order.id (CASCADE)
-        *book_id : int  -- logical→book_db.app_product.id
+        *book_id : int  -- logical→product_db.app_product.id
         *quantity : int (>=1)
         *price : decimal(10,2)
     }
@@ -231,7 +231,7 @@ package "comment_db" <<Database>> #EAEDED {
     entity "app_review" as review {
         *id : serial PK
         --
-        *book_id : int      -- logical→book_db.app_product.id
+        *book_id : int      -- logical→product_db.app_product.id
         *customer_id : int  -- logical→customer_db.app_customer.id
         *rating : int (1..5)
         comment : text
@@ -324,7 +324,7 @@ note bottom
   **Polyglot persistence**
   • <b>MySQL 8.4</b> hosts the four User-Context databases (yellow background).
   • <b>PostgreSQL 16</b> hosts the eight remaining databases — required for
-    pgvector (advisory_db) and for full-text search via SearchVector (book_db).
+    pgvector (advisory_db) and for full-text search via SearchVector (product_db).
   • Each microservice owns exactly one database; no service ever talks to
     another service's database directly.
 end note

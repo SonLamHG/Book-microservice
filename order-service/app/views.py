@@ -7,7 +7,7 @@ import requests
 from .messaging import publish_event
 
 CART_SERVICE_URL = "http://cart-service:8000"
-BOOK_SERVICE_URL = "http://book-service:8000"
+PRODUCT_SERVICE_URL = "http://product-service:8000"
 PAY_SERVICE_URL = "http://pay-service:8000"
 SHIP_SERVICE_URL = "http://ship-service:8000"
 
@@ -58,7 +58,7 @@ class OrderListCreate(APIView):
         order_items_data = []
         for item in cart_items:
             try:
-                br = requests.get(f"{BOOK_SERVICE_URL}/products/{item['book_id']}/", timeout=5)
+                br = requests.get(f"{PRODUCT_SERVICE_URL}/products/{item['book_id']}/", timeout=5)
                 if br.status_code != 200:
                     log_saga_step(order, 'FETCH_BOOK_PRICE', 'FAILED', f"Product {item['book_id']} not found")
                     order.status = 'CANCELLED'

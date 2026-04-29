@@ -1,7 +1,7 @@
 @startuml class-diagram
 ' =====================================================================
 ' Class Diagram — Bookstore E-Commerce Microservices
-' Source: Django models across 14 services (book-service, cart-service,
+' Source: Django models across 14 services (product-service, cart-service,
 ' order-service, pay-service, ship-service, customer-service, auth-service,
 ' staff-service, manager-service, catalog-service, comment-rate-service,
 ' recommender-ai-service, advisory-chat-service, api-gateway).
@@ -90,10 +90,10 @@ package "User Context" <<auth-service / customer / staff / manager>> #FFF7E6 {
 }
 
 ' =====================================================================
-' PRODUCT CONTEXT  (book-service + catalog-service)
+' PRODUCT CONTEXT  (product-service + catalog-service)
 ' Demonstrates the inheritance pattern required by thesis Ch.2.3
 ' =====================================================================
-package "Product Context" <<book-service / catalog-service>> #E6F7FF {
+package "Product Context" <<product-service / catalog-service>> #E6F7FF {
 
     enum ProductType {
         BOOK

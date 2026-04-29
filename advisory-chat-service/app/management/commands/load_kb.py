@@ -114,7 +114,7 @@ class Command(BaseCommand):
         import requests
         from app.knowledge_base import bulk_embed_and_store
 
-        book_url = getattr(settings, 'BOOK_SERVICE_URL', 'http://book-service:8000')
+        product_url = getattr(settings, 'PRODUCT_SERVICE_URL', 'http://product-service:8000')
         catalog_url = getattr(settings, 'CATALOG_SERVICE_URL', 'http://catalog-service:8000')
 
         # Fetch categories
@@ -130,7 +130,7 @@ class Command(BaseCommand):
 
         # Fetch books
         try:
-            r = requests.get(f"{book_url}/books/", timeout=5)
+            r = requests.get(f"{product_url}/books/", timeout=5)
             if r.status_code != 200:
                 self.stdout.write(self.style.WARNING("Could not fetch books"))
                 return

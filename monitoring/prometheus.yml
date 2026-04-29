@@ -38,7 +38,7 @@ scrape_configs:
           - "staff-service:8000"
           - "manager-service:8000"
           - "catalog-service:8000"
-          - "book-service:8000"
+          - "product-service:8000"
           - "cart-service:8000"
           - "order-service:8000"
           - "pay-service:8000"

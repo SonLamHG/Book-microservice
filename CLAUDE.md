@@ -15,8 +15,8 @@ docker-compose up --build
 # Clean rebuild (resets all data)
 docker-compose down -v && docker-compose up --build
 
-# Run a single service locally (example: book-service on port 8002)
-cd book-service
+# Run a single service locally (example: product-service on port 8002)
+cd product-service
 pip install -r requirements.txt
 python manage.py migrate --run-syncdb
 python manage.py runserver 0.0.0.0:8002
@@ -37,7 +37,7 @@ docker-compose exec advisory-chat-service python manage.py load_kb --clear
 | Nginx Gateway | 8080 | 80 |
 | API Gateway (Django UI) | 8000 | 8000 |
 | Customer | 8001 | 8000 |
-| Book | 8002 | 8000 |
+| Product | 8002 | 8000 |
 | Cart | 8003 | 8000 |
 | Staff | 8004 | 8000 |
 | Manager | 8005 | 8000 |
@@ -75,7 +75,7 @@ Every service follows the same layout: `<service>/<django_project>/settings.py` 
 | Engine | Image | Services / DBs | Why |
 |---|---|---|---|
 | **MySQL 8.4** | `mysql:8.4` (host port 3307) | auth-service (auth_db), customer-service (customer_db), staff-service (staff_db), manager-service (manager_db) | User Context — simple relational schema; thesis sample explicitly uses MySQL for User Service |
-| **PostgreSQL 16** | `pgvector/pgvector:pg16` (host port 5433) | catalog (catalog_db), book (book_db), cart (cart_db), order (order_db), pay (payment_db), ship (shipping_db), comment-rate (comment_db), advisory-chat (advisory_db) | Product/Order/Advisory contexts — JSON fields, full-text search (`SearchVector`/`SearchQuery`), pgvector embeddings, complex inheritance |
+| **PostgreSQL 16** | `pgvector/pgvector:pg16` (host port 5433) | catalog (catalog_db), product (product_db), cart (cart_db), order (order_db), pay (payment_db), ship (shipping_db), comment-rate (comment_db), advisory-chat (advisory_db) | Product/Order/Advisory contexts — JSON fields, full-text search (`SearchVector`/`SearchQuery`), pgvector embeddings, complex inheritance |
 
 Driver wiring:
 - The 4 MySQL services use **PyMySQL** as a `MySQLdb` shim (pure Python, no native libs needed). Top of `settings.py` calls `pymysql.install_as_MySQLdb()` with a version stub.
@@ -93,7 +93,7 @@ The API Gateway service is the exception: it uses in-memory SQLite (no models, j
 
 ### Inter-Service HTTP
 
-Services call each other via `requests` library with 5-second timeout. Service URLs are **hardcoded as module-level constants** in views.py using Docker Compose service names (e.g., `http://book-service:8000`). When running locally outside Docker, these URLs won't resolve.
+Services call each other via `requests` library with 5-second timeout. Service URLs are **hardcoded as module-level constants** in views.py using Docker Compose service names (e.g., `http://product-service:8000`). When running locally outside Docker, these URLs won't resolve.
 
 ### RabbitMQ Event Bus
 

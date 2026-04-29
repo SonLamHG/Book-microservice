@@ -8,7 +8,7 @@ DATA_DIR = BASE_DIR / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # ---------- Backend service URLs (resolved by docker DNS) ----------
-BOOK_SERVICE_URL          = os.environ.get("BOOK_SERVICE_URL",          "http://book-service:8000")
+PRODUCT_SERVICE_URL       = os.environ.get("PRODUCT_SERVICE_URL",       "http://product-service:8000")
 ORDER_SERVICE_URL         = os.environ.get("ORDER_SERVICE_URL",         "http://order-service:8000")
 COMMENT_RATE_SERVICE_URL  = os.environ.get("COMMENT_RATE_SERVICE_URL",  "http://comment-rate-service:8000")
 CATALOG_SERVICE_URL       = os.environ.get("CATALOG_SERVICE_URL",       "http://catalog-service:8000")

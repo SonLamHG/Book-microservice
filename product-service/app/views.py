@@ -244,4 +244,4 @@ class FashionDetail(APIView):
 
 
 def health_check(request):
-    return JsonResponse({'status': 'healthy', 'service': 'book-service'})
+    return JsonResponse({'status': 'healthy', 'service': 'product-service'})

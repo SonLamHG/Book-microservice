@@ -1,5 +1,5 @@
 """Startup helpers. The service waits for backend dependencies to come up
-(book-service for product list, neo4j for graph) before warming up the
+(product-service for product list, neo4j for graph) before warming up the
 LSTM, FAISS index and Neo4j seed graph."""
 import logging
 import time
@@ -13,20 +13,20 @@ log = logging.getLogger("ai-service.bootstrap")
 
 
 def fetch_products(retries: int = 12, delay: float = 5.0) -> List[Dict[str, Any]]:
-    """Pull the full product catalogue from book-service. We retry because
-    book-service may not be ready yet during cold container start."""
-    url = f"{config.BOOK_SERVICE_URL}/products/"
+    """Pull the full product catalogue from product-service. We retry because
+    product-service may not be ready yet during cold container start."""
+    url = f"{config.PRODUCT_SERVICE_URL}/products/"
     for attempt in range(1, retries + 1):
         try:
             r = requests.get(url, timeout=5)
             if r.status_code == 200:
                 products = r.json()
-                log.info("Fetched %d products from book-service", len(products))
+                log.info("Fetched %d products from product-service", len(products))
                 return products
         except requests.RequestException as exc:
-            log.warning("book-service unreachable (attempt %d/%d): %s", attempt, retries, exc)
+            log.warning("product-service unreachable (attempt %d/%d): %s", attempt, retries, exc)
         time.sleep(delay)
-    log.error("Could not reach book-service after %d attempts; returning empty catalogue", retries)
+    log.error("Could not reach product-service after %d attempts; returning empty catalogue", retries)
     return []
 
 

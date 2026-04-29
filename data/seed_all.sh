@@ -90,8 +90,8 @@ seed_service "catalog-service" "catalog-service" "catalog_db"
 # -------------------------------------------------------
 # Phase 3: Book Service (books)
 # -------------------------------------------------------
-echo "[3/8] Seeding book-service (books)..."
-seed_service "book-service" "book-service" "book_db"
+echo "[3/8] Seeding product-service (books + electronics + fashion)..."
+seed_service "product-service" "product-service" "product_db"
 
 # -------------------------------------------------------
 # Phase 4: Customer / Staff / Manager (MySQL — User Context)
@@ -151,7 +151,7 @@ END \$\$;
 # InnoDB advances AUTO_INCREMENT past explicit IDs automatically, so no
 # manual reset is needed for those.
 reset_sequences "catalog_db"
-reset_sequences "book_db"
+reset_sequences "product_db"
 reset_sequences "cart_db"
 reset_sequences "order_db"
 reset_sequences "payment_db"

@@ -5,7 +5,7 @@ from .models import Cart, CartItem
 from .serializers import CartSerializer, CartItemSerializer
 import requests
 
-BOOK_SERVICE_URL = "http://book-service:8000"
+PRODUCT_SERVICE_URL = "http://product-service:8000"
 
 
 class CartCreate(APIView):
@@ -36,7 +36,7 @@ class AddCartItem(APIView):
         # Verify product exists (any product type — book, electronics, fashion).
         # The model column is named book_id for legacy reasons; it actually holds the Product PK.
         try:
-            r = requests.get(f"{BOOK_SERVICE_URL}/products/{book_id}/", timeout=5)
+            r = requests.get(f"{PRODUCT_SERVICE_URL}/products/{book_id}/", timeout=5)
             if r.status_code != 200:
                 return Response({"error": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
         except requests.exceptions.RequestException:

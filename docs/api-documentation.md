@@ -11,7 +11,7 @@ Authentication is handled by Auth Service (JWT). The API Gateway enforces role-b
 | Service                | Internal URL                          | External Port |
 |------------------------|---------------------------------------|---------------|
 | customer-service       | `http://customer-service:8000`        | 8001          |
-| book-service           | `http://book-service:8000`            | 8002          |
+| product-service           | `http://product-service:8000`            | 8002          |
 | cart-service           | `http://cart-service:8000`            | 8003          |
 | staff-service          | `http://staff-service:8000`           | 8004          |
 | manager-service        | `http://manager-service:8000`         | 8005          |
@@ -205,7 +205,7 @@ Add an item to cart. If item already exists, increments quantity.
 **Error** `404 Not Found` — Book or cart not found
 **Error** `503 Service Unavailable` — Book service unreachable
 
-**Side Effect:** Verifies book exists via `GET book-service:8000/books/{book_id}/`
+**Side Effect:** Verifies book exists via `GET product-service:8000/books/{book_id}/`
 
 ### PUT /cart-items/{id}/
 Update cart item quantity.
@@ -287,7 +287,7 @@ Create order from customer's cart.
 
 **Order Creation Flow:**
 1. Fetches cart items from `GET cart-service:8000/carts/{customer_id}/`
-2. Fetches book price for each item from `GET book-service:8000/books/{book_id}/`
+2. Fetches book price for each item from `GET product-service:8000/books/{book_id}/`
 3. Creates Order + OrderItems, calculates total
 4. Triggers payment via `POST pay-service:8000/payments/`
 5. Triggers shipping via `POST ship-service:8000/shipments/`
@@ -711,8 +711,8 @@ Get personalized book recommendations.
 
 **Algorithm:**
 1. Fetch top-rated books from `GET comment-rate-service:8000/reviews/top-rated/?limit={limit}`
-2. Enrich each book with details from `GET book-service:8000/books/{book_id}/`
-3. If fewer than `limit` results, fill with latest books from `GET book-service:8000/books/`
+2. Enrich each book with details from `GET product-service:8000/books/{book_id}/`
+3. If fewer than `limit` results, fill with latest books from `GET product-service:8000/books/`
 
 ---
 
