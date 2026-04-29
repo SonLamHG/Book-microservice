@@ -67,6 +67,8 @@ A microservices-based online bookstore built with Django and Django REST Framewo
 | **RabbitMQ** | 5673 / 15673 | Message broker (AMQP / Management UI) |
 | **PostgreSQL** | 5433 | Database for 8 contexts (Product, Cart, Order, Payment, Shipping, Review, Catalog, Advisory) |
 | **MySQL** | 3307 | Database for 4 User Context services (auth, customer, staff, manager) |
+| **Elasticsearch + Kibana** | 9200 / 5601 | ELK skeleton for log search (Ch.4 §4.9) |
+| **Prometheus + Grafana** | 9090 / 3000 | Metrics + dashboards (admin/admin); see `monitoring/README.md` |
 
 ## Tech Stack
 

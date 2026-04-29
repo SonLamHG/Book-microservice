@@ -53,6 +53,10 @@ docker-compose exec advisory-chat-service python manage.py load_kb --clear
 | Neo4j Bolt | 7687 | 7687 |
 | Neo4j Browser | 7474 | 7474 |
 | MySQL (User Context) | 3307 | 3306 |
+| Elasticsearch HTTP | 9200 | 9200 |
+| Kibana | 5601 | 5601 |
+| Prometheus | 9090 | 9090 |
+| Grafana | 3000 | 3000 |
 | RabbitMQ AMQP | 5673 | 5672 |
 | RabbitMQ UI | 15673 | 15672 |
 | PostgreSQL | 5433 | 5432 |
@@ -120,6 +124,10 @@ order-service implements a Saga pattern: fetch cart -> get book prices -> create
 ### Advisory Chat (RAG Pipeline)
 
 Uses pgvector for semantic search over a knowledge base. Embeddings via `sentence-transformers/all-MiniLM-L6-v2` (384 dimensions). Customer behavior analysis (RFM segmentation) built from order/review data fetched via HTTP. LLM calls use OpenAI `gpt-4o-mini`. System prompt is in Vietnamese. Requires `OPENAI_API_KEY` env var (set in `.env` at project root).
+
+### Observability (ELK + Prometheus + Grafana — skeleton)
+
+Implements thesis Ch.4 §4.9 at skeleton level. Four containers up: `elasticsearch` (single-node, security off, `-Xmx512m`), `kibana`, `prometheus` (config `monitoring/prometheus.yml`), `grafana` (auto-provisioned Prometheus datasource + "API Gateway" dashboard). Only `api-gateway` is wired with `django-prometheus` — other services appear DOWN at <http://localhost:9090/targets>. No log shipper yet (Kibana opens with empty indices). Migration steps for full monitoring documented at `monitoring/README.md`.
 
 ### AI Service (Hybrid Recommender — thesis Ch.3 spec)
 

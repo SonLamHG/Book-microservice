@@ -1,0 +1,13 @@
+apiVersion: 1
+
+# Tells Grafana to pick up any *.json file in /etc/grafana/provisioning/dashboards
+providers:
+  - name: bookstore
+    orgId: 1
+    folder: Bookstore
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards

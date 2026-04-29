@@ -1,0 +1,15 @@
+apiVersion: 1
+
+# Auto-provisioned datasource. Loaded by Grafana on startup so the user
+# does not need to add it manually. See docker-compose volume mount:
+# ./monitoring/grafana-provisioning -> /etc/grafana/provisioning
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      httpMethod: POST
+      timeInterval: 15s

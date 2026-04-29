@@ -85,6 +85,42 @@ Cross-cutting concerns enforced at the Nginx layer:
 
 ---
 
+## 1.3 Observability — ELK + Prometheus + Grafana (skeleton)
+
+Per thesis Ch.4 §4.9. Skeleton-grade deployment (Option A): containers up,
+api-gateway wired, others on a documented migration path.
+
+```
+                   ┌──────────────────┐    ┌─────────────────┐
+   /metrics ──▶    │   Prometheus     │◀──▶│    Grafana      │
+   scrape          │   :9090          │    │    :3000        │
+                   └────────┬─────────┘    └────────┬────────┘
+                            │ scrape every 15s      │ datasource auto-provisioned
+                            ▼                       │
+                   ┌──────────────────┐             │
+                   │  api-gateway     │   ←─────────┘
+                   │  (django-prom)   │
+                   │  /metrics        │
+                   └──────────────────┘
+
+   docker logs ──▶ (no shipper yet) ──▶ ┌────────────┐    ┌────────┐
+                                         │ Elasticsearch│◀──▶│ Kibana │
+                                         │ :9200       │    │ :5601  │
+                                         └────────────┘    └────────┘
+```
+
+| Container | Image | Host port | Status |
+|---|---|---|---|
+| elasticsearch | `docker.elastic.co/elasticsearch/elasticsearch:8.16.1` | 9200 | up; single-node; security off |
+| kibana | `docker.elastic.co/kibana/kibana:8.16.1` | 5601 | up; empty indices (no log shipper) |
+| prometheus | `prom/prometheus:v3.0.1` | 9090 | up; scrapes api-gateway (UP) + 14 other services (DOWN) |
+| grafana | `grafana/grafana:11.4.0` | 3000 | up; admin/admin; auto-loaded "API Gateway" dashboard |
+
+**Wired:** api-gateway only. To bring more services in, follow the
+migration steps in `monitoring/README.md`.
+
+---
+
 ## 1.2 Polyglot Persistence — MySQL vs PostgreSQL
 
 Per SoAD thesis Ch.2.10.4, the platform deliberately uses two different

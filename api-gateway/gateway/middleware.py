@@ -15,6 +15,8 @@ PUBLIC_PATHS = [
     '/auth/register/',
     '/auth/logout/',
     '/health/',
+    '/metrics',           # Prometheus scrape — no auth
+    '/metrics/',
 ]
 
 # Role-based access control: maps (resource, action) to allowed roles

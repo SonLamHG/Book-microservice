@@ -1,0 +1,66 @@
+# Prometheus scrape config for the Bookstore Microservice platform.
+#
+# SKELETON STATE (per thesis Ch.4 §4.9 Option A):
+#   • api-gateway  has django-prometheus wired and serves /metrics.
+#   • Every other service is listed below but will appear DOWN until it
+#     installs django-prometheus + adds the URL include. Migration steps
+#     are documented in docs/architecture-diagrams.md §1.3.
+#
+# To verify scrapes:    open http://localhost:9090/targets
+# To run an ad-hoc query: open http://localhost:9090/graph
+
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: bookstore-dev
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: api-gateway
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api-gateway:8000"]
+        labels:
+          service: api-gateway
+          tier: edge
+
+  # ----- Wired in v02 (skeleton today; targets DOWN expected) -----
+  - job_name: backend-services
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - "auth-service:8000"
+          - "customer-service:8000"
+          - "staff-service:8000"
+          - "manager-service:8000"
+          - "catalog-service:8000"
+          - "book-service:8000"
+          - "cart-service:8000"
+          - "order-service:8000"
+          - "pay-service:8000"
+          - "ship-service:8000"
+          - "comment-rate-service:8000"
+          - "recommender-ai-service:8000"
+          - "advisory-chat-service:8000"
+        labels:
+          tier: backend
+
+  - job_name: ai-service
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["ai-service:8000"]
+        labels:
+          service: ai-service
+          tier: ai
+
+  - job_name: nginx
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["nginx:80"]
+        labels:
+          service: nginx
+          tier: edge
