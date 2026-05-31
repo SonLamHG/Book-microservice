@@ -1,0 +1,12 @@
+# Keep the image lean: exclude the ~1 GB raw Kaggle download and caches.
+# The small training artefacts under data/ (lstm_weights.pt, product_corpus.jsonl,
+# user_behavior.csv, graph_triples.csv, seed_data_books.sql, user_id_map.json)
+# are intentionally NOT excluded — they must be baked into the image.
+data/raw/
+data/_*.pkl
+
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
