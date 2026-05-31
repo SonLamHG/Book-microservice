@@ -29,6 +29,10 @@ MIN_RATINGS_PER_BOOK = 50
 
 OUT_CORPUS  = AI_DATA_DIR / "product_corpus.jsonl"
 OUT_SEED_SQL = AI_DATA_DIR / "seed_data_books.sql"
+OUT_BEHAVIOR = AI_DATA_DIR / "user_behavior.csv"
+OUT_USER_MAP = AI_DATA_DIR / "user_id_map.json"
+
+MIN_EVENTS_PER_USER = 5
 
 
 def _parse_categories_cell(cell: object) -> list:
@@ -246,6 +250,52 @@ def emit_seed_sql(subset: pd.DataFrame) -> None:
     print(f"[seed-sql] wrote {OUT_SEED_SQL}")
 
 
+def emit_behavior(subset: pd.DataFrame, ratings: pd.DataFrame) -> None:
+    """Filter ratings to subset titles, map Amazon User_id -> int,
+    derive synthetic action funnel from review/score, write CSV + JSON map.
+
+    Action funnel rule (the LSTM only really cares about ordered product
+    sequence, but downstream graph_triples wants action types):
+      review/score >= 4 : 'purchase'
+      review/score == 3 : 'add_to_cart'
+      review/score <  3 : 'view'
+    """
+    title_to_pid = dict(zip(subset["name"], subset["product_id"]))
+    r = ratings[ratings["Title"].isin(title_to_pid)].copy()
+    r["product_id"] = r["Title"].map(title_to_pid).astype(int)
+    print(f"[behavior] ratings on subset: {len(r):,}")
+
+    # Drop users with too few events.
+    user_counts = r.groupby("User_id").size()
+    keep_users = user_counts[user_counts >= MIN_EVENTS_PER_USER].index
+    r = r[r["User_id"].isin(keep_users)]
+    print(f"[behavior] users with >= {MIN_EVENTS_PER_USER} events: {len(keep_users):,}")
+
+    # Stable int mapping (sorted for reproducibility).
+    sorted_uids = sorted(r["User_id"].unique())
+    user_map = {uid: i + 1 for i, uid in enumerate(sorted_uids)}
+    OUT_USER_MAP.write_text(json.dumps(user_map, indent=2), encoding="utf-8")
+    print(f"[behavior] user_id_map: {len(user_map):,} entries -> {OUT_USER_MAP}")
+
+    r["user_id_int"] = r["User_id"].map(user_map).astype(int)
+    r["timestamp"] = pd.to_datetime(r["review/time"], unit="s", errors="coerce")
+    r = r.dropna(subset=["timestamp"])
+
+    def _action(s: float) -> str:
+        if s >= 4: return "purchase"
+        if s >= 3: return "add_to_cart"
+        return "view"
+
+    r["action"] = r["review/score"].astype(float).map(_action)
+
+    out = r[["user_id_int", "product_id", "action", "timestamp"]]\
+        .rename(columns={"user_id_int": "user_id"})\
+        .sort_values(["user_id", "timestamp"])
+
+    out.to_csv(OUT_BEHAVIOR, index=False, date_format="%Y-%m-%dT%H:%M:%S")
+    print(f"[behavior] wrote {len(out):,} rows to {OUT_BEHAVIOR}")
+
+
 def main() -> int:
     if not (RAW_DIR / "Books_rating.csv").exists():
         print(f"ERROR: raw data not found in {RAW_DIR}. Run: make download-datasets",
@@ -256,6 +306,7 @@ def main() -> int:
     subset = select_subset(books, ratings)
     emit_corpus(subset)
     emit_seed_sql(subset)
+    emit_behavior(subset, ratings)
 
     # Persist the picked subset for downstream steps (Task 5, 6).
     subset.to_pickle(AI_DATA_DIR / "_subset.pkl")
