@@ -9,3 +9,6 @@ db.sqlite3
 
 # Kaggle raw downloads (large, regenerable)
 ai-service/data/raw/
+
+# Preprocess intermediates (no longer written; guard against re-introduction)
+ai-service/data/_*.pkl
