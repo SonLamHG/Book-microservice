@@ -132,9 +132,11 @@ Implements thesis Ch.4 §4.9 at skeleton level. Four containers up: `elasticsear
 ### AI Service (Hybrid Recommender — thesis Ch.3 spec)
 
 **FastAPI** service at port 8014. Three components blended into a hybrid score `final = w1·LSTM + w2·Graph + w3·RAG`:
-- **LSTM (PyTorch):** `nn.LSTM(input_dim=N, hidden_dim=64) → nn.Linear(N)` predicts next product from a sequence of one-hot encoded interactions. Trained at startup on synthetic sequences derived from real seed orders + product categories.
+- **LSTM (PyTorch):** `nn.LSTM(input_dim=N, hidden_dim=64) → nn.Linear(N)` predicts next product from a sequence of one-hot encoded interactions. Trained **offline** (`make train-ai`) on the Amazon Books Reviews dataset (Kaggle), 500-book subset. Weights `ai-service/data/lstm_weights.pt` are committed and loaded at startup — the container does NOT train (`LSTM_TRAIN_AT_STARTUP=false` by default).
 - **Knowledge Graph (Neo4j 5):** nodes `(:User)`, `(:Product)`, `(:Category)`; edges `BOUGHT`, `VIEWED`, `SIMILAR` (co-purchase + same-category), `IN_CATEGORY`. Cypher recommendation query at `app/graph/queries.py`.
 - **RAG (FAISS `IndexFlatIP`):** embeddings via `sentence-transformers/all-MiniLM-L6-v2`, normalised vectors → cosine similarity over product descriptions.
+
+**Training data:** the offline pipeline (download → preprocess → train) lives in `scripts/` and is driven by the root `Makefile`. See `ai-service/README.md` "Training data pipeline". The 500-book subset is mirrored into product-service via the generated `ai-service/data/seed_data_books.sql` (loaded by `data/seed_all.sh`) so recommendations resolve to real catalogue items.
 
 Endpoints: `GET /recommend?user_id=` (hybrid list), `POST /chatbot` (FAISS retrieve + optional GPT-4o-mini if `OPENAI_API_KEY` set, else templated response). Browse Neo4j at <http://localhost:7474> (`neo4j` / `bookstore-secret`).
 
