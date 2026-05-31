@@ -31,6 +31,7 @@ OUT_CORPUS  = AI_DATA_DIR / "product_corpus.jsonl"
 OUT_SEED_SQL = AI_DATA_DIR / "seed_data_books.sql"
 OUT_BEHAVIOR = AI_DATA_DIR / "user_behavior.csv"
 OUT_USER_MAP = AI_DATA_DIR / "user_id_map.json"
+OUT_GRAPH = AI_DATA_DIR / "graph_triples.csv"
 
 MIN_EVENTS_PER_USER = 5
 
@@ -296,6 +297,77 @@ def emit_behavior(subset: pd.DataFrame, ratings: pd.DataFrame) -> None:
     print(f"[behavior] wrote {len(out):,} rows to {OUT_BEHAVIOR}")
 
 
+def emit_graph(subset: pd.DataFrame) -> None:
+    """Derive Neo4j edges from user_behavior.csv (already written).
+
+    Edges:
+      IN_CATEGORY : Product -> Category (1 per product)
+      BOUGHT      : User -> Product (count = #purchase events)
+      VIEWED      : User -> Product (count = #view events)
+      SIMILAR     : Product -> Product (co-purchase + same-category)
+    """
+    from collections import defaultdict
+    from scripts._io import write_csv
+
+    triples: list[tuple] = []
+
+    # 1) IN_CATEGORY
+    for _, r in subset.iterrows():
+        triples.append((
+            "Product", int(r["product_id"]), "IN_CATEGORY",
+            "Category", int(r["category_id"]), 1.0,
+        ))
+
+    # 2) BOUGHT + VIEWED from behavior file
+    import csv
+    bought = defaultdict(int)
+    viewed = defaultdict(int)
+    user_purchases = defaultdict(set)
+    with OUT_BEHAVIOR.open(encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            uid, pid, act = int(row["user_id"]), int(row["product_id"]), row["action"]
+            if act == "purchase":
+                bought[(uid, pid)] += 1
+                user_purchases[uid].add(pid)
+            elif act in ("view", "add_to_cart"):
+                viewed[(uid, pid)] += 1
+
+    for (uid, pid), cnt in bought.items():
+        triples.append(("User", uid, "BOUGHT", "Product", pid, float(cnt)))
+    for (uid, pid), cnt in viewed.items():
+        triples.append(("User", uid, "VIEWED", "Product", pid, float(cnt)))
+
+    # 3) SIMILAR (co-purchase). Cap to keep file size sane.
+    co = defaultdict(float)
+    for pids in user_purchases.values():
+        for a in pids:
+            for b in pids:
+                if a < b:
+                    co[(a, b)] += 1.0
+    # Only keep co-purchase pairs with weight >= 2 (noise floor).
+    for (a, b), w in co.items():
+        if w >= 2:
+            triples.append(("Product", a, "SIMILAR", "Product", b, w))
+
+    # 4) SIMILAR (same category) — lighter weight, for cold-start.
+    by_cat = defaultdict(list)
+    for _, r in subset.iterrows():
+        by_cat[int(r["category_id"])].append(int(r["product_id"]))
+    seen_pairs = {(a, b) for a, b in co}
+    for pids in by_cat.values():
+        for a in pids:
+            for b in pids:
+                if a < b and (a, b) not in seen_pairs:
+                    triples.append(("Product", a, "SIMILAR", "Product", b, 0.3))
+
+    n = write_csv(
+        OUT_GRAPH,
+        ["source_type", "source_id", "edge_type", "target_type", "target_id", "weight"],
+        triples,
+    )
+    print(f"[graph] wrote {n:,} triples to {OUT_GRAPH}")
+
+
 def main() -> int:
     if not (RAW_DIR / "Books_rating.csv").exists():
         print(f"ERROR: raw data not found in {RAW_DIR}. Run: make download-datasets",
@@ -307,6 +379,7 @@ def main() -> int:
     emit_corpus(subset)
     emit_seed_sql(subset)
     emit_behavior(subset, ratings)
+    emit_graph(subset)
 
     # Persist the picked subset for downstream steps (Task 5, 6).
     subset.to_pickle(AI_DATA_DIR / "_subset.pkl")
