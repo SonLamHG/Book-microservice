@@ -380,11 +380,9 @@ def main() -> int:
     emit_seed_sql(subset)
     emit_behavior(subset, ratings)
     emit_graph(subset)
-
-    # Persist the picked subset for downstream steps (Task 5, 6).
-    subset.to_pickle(AI_DATA_DIR / "_subset.pkl")
-    ratings.to_pickle(AI_DATA_DIR / "_ratings.pkl")  # filtered later
-    print("[done] book subset + corpus + seed SQL written.")
+    # No pickle handoff: every emit_* takes its inputs as args and runs in a
+    # single process, so a single `make preprocess` produces all artefacts.
+    print("[done] corpus + seed SQL + behaviour + graph written.")
     return 0
 
 

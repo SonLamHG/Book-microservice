@@ -90,8 +90,16 @@ seed_service "catalog-service" "catalog-service" "catalog_db"
 # -------------------------------------------------------
 # Phase 3: Book Service (books)
 # -------------------------------------------------------
-echo "[3/8] Seeding product-service (books + electronics + fashion)..."
-seed_service "product-service" "product-service" "product_db"
+echo "[3/8] Seeding product-service (real Amazon book catalogue)..."
+BOOKS_SQL="$SCRIPT_DIR/../ai-service/data/seed_data_books.sql"
+if [ -f "$BOOKS_SQL" ]; then
+    cat "$BOOKS_SQL" | docker-compose exec -T postgres psql -U postgres -d product_db -q
+    echo "  Done (loaded $(basename "$BOOKS_SQL"))."
+else
+    echo "  WARNING: $BOOKS_SQL not found — run 'make preprocess' to generate it."
+    echo "  Falling back to the (now placeholder) product-service section of seed_data.sql."
+    seed_service "product-service" "product-service" "product_db"
+fi
 
 # -------------------------------------------------------
 # Phase 4: Customer / Staff / Manager (MySQL — User Context)
