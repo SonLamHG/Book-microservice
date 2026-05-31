@@ -29,7 +29,7 @@ LSTM_HIDDEN_DIM   = int(os.environ.get("LSTM_HIDDEN_DIM",   "64"))
 LSTM_SEQ_LENGTH   = int(os.environ.get("LSTM_SEQ_LENGTH",   "5"))
 LSTM_EPOCHS       = int(os.environ.get("LSTM_EPOCHS",       "30"))
 LSTM_LR           = float(os.environ.get("LSTM_LR",         "0.01"))
-LSTM_TRAIN_AT_STARTUP = os.environ.get("LSTM_TRAIN_AT_STARTUP", "true").lower() == "true"
+LSTM_TRAIN_AT_STARTUP = os.environ.get("LSTM_TRAIN_AT_STARTUP", "false").lower() == "true"
 
 # ---------- FAISS RAG ----------
 EMBED_MODEL_NAME = os.environ.get("EMBED_MODEL_NAME", "sentence-transformers/all-MiniLM-L6-v2")

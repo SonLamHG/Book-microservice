@@ -41,11 +41,21 @@ async def lifespan(app: FastAPI):
     products = fetch_products()
     orders = fetch_orders()
 
-    if config.LSTM_TRAIN_AT_STARTUP:
-        try:
+    # 2. LSTM — load pretrained weights by default; train only if explicitly enabled.
+    try:
+        if config.LSTM_TRAIN_AT_STARTUP:
             lstm_inference.warmup(products, orders, force_train=False)
-        except Exception as exc:
-            log.exception("LSTM warmup failed: %s", exc)
+        else:
+            if config.LSTM_WEIGHTS_PATH.exists():
+                lstm_inference.warmup(products, orders, force_train=False)
+            else:
+                log.warning(
+                    "LSTM weights missing at %s — hybrid will skip the LSTM "
+                    "component. Run `make train-ai` to generate weights.",
+                    config.LSTM_WEIGHTS_PATH,
+                )
+    except Exception as exc:
+        log.warning("LSTM setup failed: %s", exc)
 
     if config.SEED_GRAPH_AT_STARTUP:
         try:
