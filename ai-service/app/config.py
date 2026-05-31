@@ -18,6 +18,11 @@ NEO4J_URI       = os.environ.get("NEO4J_URI",       "bolt://neo4j:7687")
 NEO4J_USER      = os.environ.get("NEO4J_USER",      "neo4j")
 NEO4J_PASSWORD  = os.environ.get("NEO4J_PASSWORD",  "bookstore-secret")
 
+# ---------- On-disk datasets (committed to repo) ----------
+BEHAVIOR_CSV_PATH = DATA_DIR / "user_behavior.csv"
+GRAPH_CSV_PATH    = DATA_DIR / "graph_triples.csv"
+CORPUS_JSONL_PATH = DATA_DIR / "product_corpus.jsonl"
+
 # ---------- LSTM ----------
 LSTM_WEIGHTS_PATH = DATA_DIR / "lstm_weights.pt"
 LSTM_HIDDEN_DIM   = int(os.environ.get("LSTM_HIDDEN_DIM",   "64"))

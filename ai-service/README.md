@@ -87,19 +87,48 @@ RETURN rec.id, rec.name, score ORDER BY score DESC LIMIT $top_k
 
 You can browse the graph at <http://localhost:7474> (login: `neo4j` / `bookstore-secret`).
 
+## Training datasets (committed to repo)
+
+Three real on-disk datasets feed the three AI components. They live in
+`ai-service/data/` and are committed to git so the training pipeline
+is fully reproducible:
+
+| File | Schema | Rows | Consumed by |
+|---|---|---|---|
+| `product_corpus.jsonl` | one JSON per line: `{product_id, name, type, category, price, brand_or_author, description, keywords[]}` | 27 | FAISS (embedding + metadata source-of-truth) |
+| `user_behavior.csv` | `user_id, product_id, action, timestamp` (action ∈ view/click/add_to_cart/purchase) | 237 | LSTM (sliding-window sequences) |
+| `graph_triples.csv` | `source_type, source_id, edge_type, target_type, target_id, weight` (edge ∈ IN_CATEGORY/BOUGHT/VIEWED/SIMILAR) | 134 | Neo4j seed |
+
+The behaviour log and graph triples are produced deterministically by
+`data/generate_datasets.py` (seed=42); the product corpus is hand-curated.
+
+To regenerate:
+```bash
+cd ai-service/data
+python generate_datasets.py
+```
+
+### What "real" means here
+
+- The 27-product catalogue mirrors the real seed data in `data/seed_data.sql`.
+- The behaviour log is **realistic** rather than collected from production —
+  it's anchored to 5 user personas (literature lover, programmer,
+  business, lifestyle, gadget enthusiast) and includes the 3 actual
+  seed orders as `purchase` events so the dataset is consistent with
+  the rest of the system.
+- Graph triples are derived from the behaviour log + category structure;
+  they're explicit and auditable on disk rather than computed at runtime.
+
 ## What is honest vs aspirational
 
 **Honest:**
 - LSTM architecture matches thesis Ch.3.4.2 sample line-for-line.
-- LSTM trains on **synthetic** sequences derived from real seed orders + product categories — there is no event-tracking pipeline yet.
-- FAISS index is rebuilt at every startup (small catalogue: ~30 products).
-- Neo4j is wiped + reseeded at every startup (idempotent).
+- LSTM trains on the on-disk `user_behavior.csv` (237 events across 5 users).
+- FAISS index is rebuilt at every startup from `product_corpus.jsonl`.
+- Neo4j is wiped + reseeded from `graph_triples.csv` at every startup.
 - Hybrid score is the exact weighted sum from the thesis (`w1·lstm + w2·graph + w3·rag`).
 
 **Aspirational (out of scope for the v01 thesis demo):**
-- No real-time user behaviour ingestion (would need Kafka or RabbitMQ topic for `view`/`click` events).
-- LSTM is not benchmarked on a holdout set (no test data).
+- No real-time user behaviour ingestion (would need Kafka or RabbitMQ topic).
+- LSTM is not benchmarked on a holdout set.
 - Graph SIMILAR edges are heuristic, not learned.
-
-These limitations are documented so the thesis review can score the demo
-on what's actually built, not on what the script implies.

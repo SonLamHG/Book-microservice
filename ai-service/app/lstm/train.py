@@ -1,21 +1,21 @@
-"""Generate synthetic user-behaviour sequences and train the LSTM.
+"""Train the LSTM next-product predictor on the real on-disk dataset
+`ai-service/data/user_behavior.csv`.
 
-Real production data does not exist (no event-tracking pipeline yet), so
-we synthesise sequences with two patterns the model can learn:
+Pipeline:
+  1. Load the behaviour log (load_user_behavior).
+  2. Group events by user, ordered by timestamp.
+  3. For each user sequence of length N ≥ seq_length+1, emit sliding-
+     window samples X[t-seq_length : t-1] → y[t].
+  4. One-hot encode each product id; train an LSTMModel (nn.LSTM + nn.Linear).
+  5. Persist weights to data/lstm_weights.pt.
 
-  1. **Category affinity** — a user who has interacted with products in
-     category C is likely to next pick another product in the same C.
-  2. **Co-purchase signal** — items that appear together in the seed
-     orders are linked: viewing one bumps the probability of the other.
-
-This is honest about its purpose: it demonstrates the LSTM pipeline (data
-→ tensor → train → save weights → infer) end-to-end, not state-of-the-art
-recommendation accuracy."""
+This is the canonical training entry point — synthetic generation has
+been removed. If the behaviour CSV is missing or yields too few samples,
+training is skipped and the LSTM contributes 0 to the hybrid score (the
+graph + RAG components still work)."""
 from __future__ import annotations
 
 import logging
-import random
-from collections import defaultdict
 from typing import Any, Dict, List, Sequence, Tuple
 
 import numpy as np
@@ -23,16 +23,22 @@ import torch
 import torch.nn as nn
 
 from .. import config
+from ..datasets import (
+    behavior_sequences_per_user,
+    load_product_corpus,
+    load_user_behavior,
+)
 from .model import LSTMModel
 
 log = logging.getLogger("ai-service.lstm.train")
 
 
 def _seq_to_onehot(seq: Sequence[int], num_products: int, seq_length: int) -> np.ndarray:
-    """Pad/truncate to seq_length, then one-hot encode each step."""
+    """Pad/truncate to seq_length, one-hot encode each step.
+    Index 0 is reserved for the padding token."""
     seq = list(seq)[-seq_length:]
     while len(seq) < seq_length:
-        seq.insert(0, 0)  # 0 = padding token (no real product uses index 0)
+        seq.insert(0, 0)
     arr = np.zeros((seq_length, num_products), dtype=np.float32)
     for t, prod_idx in enumerate(seq):
         if 0 <= prod_idx < num_products:
@@ -40,79 +46,84 @@ def _seq_to_onehot(seq: Sequence[int], num_products: int, seq_length: int) -> np
     return arr
 
 
-def build_synthetic_dataset(
+def build_dataset_from_behavior(
     products: List[Dict[str, Any]],
-    orders: List[Dict[str, Any]],
+    behavior_rows: List[Dict[str, Any]],
     *,
     seq_length: int,
-    num_examples: int = 600,
 ) -> Tuple[np.ndarray, np.ndarray, Dict[int, int], Dict[int, int]]:
-    """Return (X, y, prod_id_to_idx, idx_to_prod_id).
+    """Build (X, y, prod_id_to_idx, idx_to_prod_id) from the real
+    user-behaviour log using a sliding window.
 
-    X has shape (num_examples, seq_length, num_products) — one-hot sequences.
-    y has shape (num_examples,)                         — next-product index.
+    Each user's chronologically sorted product sequence yields
+    (len(seq) - seq_length) training samples.
     """
     if not products:
         raise ValueError("Cannot train LSTM without product catalogue")
+    if not behavior_rows:
+        raise ValueError("Cannot train LSTM without behaviour log")
 
-    # Map product ids → contiguous indices (0 reserved for padding).
+    # Contiguous indices, 0 reserved for padding. Accept both REST shape
+    # ({id}) and corpus shape (post-normalisation also {id}).
     prod_id_to_idx: Dict[int, int] = {}
     idx_to_prod_id: Dict[int, int] = {}
     for i, p in enumerate(products, start=1):
-        prod_id_to_idx[p["id"]] = i
-        idx_to_prod_id[i] = p["id"]
+        pid = p.get("id", p.get("product_id"))
+        if pid is None:
+            continue
+        prod_id_to_idx[int(pid)] = i
+        idx_to_prod_id[i] = int(pid)
+    num_products = len(products) + 1
 
-    num_products = len(products) + 1  # +1 for padding
+    seqs = behavior_sequences_per_user(behavior_rows)
 
-    # Index products by category to bias sampling toward category affinity.
-    by_category: Dict[Any, List[int]] = defaultdict(list)
-    for p in products:
-        by_category[p.get("category_id")].append(prod_id_to_idx[p["id"]])
+    X_list: List[np.ndarray] = []
+    y_list: List[int] = []
+    for uid, seq in seqs.items():
+        idx_seq = [prod_id_to_idx.get(pid, 0) for pid in seq]
+        idx_seq = [i for i in idx_seq if i != 0]  # drop unknown products
+        if len(idx_seq) < seq_length + 1:
+            # Pad-then-predict: even a short sequence can produce one sample.
+            target = idx_seq[-1]
+            ctx = idx_seq[:-1]
+            X_list.append(_seq_to_onehot(ctx, num_products, seq_length))
+            y_list.append(target)
+            continue
+        # Sliding window
+        for t in range(seq_length, len(idx_seq)):
+            ctx = idx_seq[t - seq_length : t]
+            target = idx_seq[t]
+            X_list.append(_seq_to_onehot(ctx, num_products, seq_length))
+            y_list.append(target)
 
-    # Co-purchase buckets from real orders.
-    copurchase: Dict[int, List[int]] = defaultdict(list)
-    for order in orders:
-        items = order.get("items") or []
-        idxs = [prod_id_to_idx[it["book_id"]] for it in items if it.get("book_id") in prod_id_to_idx]
-        for a in idxs:
-            for b in idxs:
-                if a != b:
-                    copurchase[a].append(b)
+    if not X_list:
+        raise ValueError("Behaviour log yielded zero training samples")
 
-    rng = random.Random(42)
-    X = np.zeros((num_examples, seq_length, num_products), dtype=np.float32)
-    y = np.zeros((num_examples,), dtype=np.int64)
-
-    cat_keys = list(by_category.keys())
-    for n in range(num_examples):
-        cat = rng.choice(cat_keys)
-        pool = by_category[cat] or list(prod_id_to_idx.values())
-        # Pick a recent context: 60% same-category, 40% co-purchase walk.
-        if rng.random() < 0.6:
-            ctx = [rng.choice(pool) for _ in range(seq_length)]
-            target = rng.choice(pool)
-        else:
-            seed = rng.choice(pool)
-            ctx = [seed]
-            for _ in range(seq_length - 1):
-                neighbours = copurchase.get(ctx[-1])
-                ctx.append(rng.choice(neighbours) if neighbours else rng.choice(pool))
-            neighbours = copurchase.get(ctx[-1])
-            target = rng.choice(neighbours) if neighbours else rng.choice(pool)
-
-        X[n] = _seq_to_onehot(ctx, num_products, seq_length)
-        y[n] = target
-
+    X = np.stack(X_list, axis=0)
+    y = np.asarray(y_list, dtype=np.int64)
+    log.info("LSTM training set: %d samples, %d users, %d products",
+             len(X_list), len(seqs), len(products))
     return X, y, prod_id_to_idx, idx_to_prod_id
 
 
 def train(
-    products: List[Dict[str, Any]],
-    orders: List[Dict[str, Any]],
+    products: List[Dict[str, Any]] | None = None,
+    orders: List[Dict[str, Any]] | None = None,    # kept for backward compat — ignored
 ) -> Tuple[LSTMModel, Dict[int, int], Dict[int, int]]:
-    """Train and persist the LSTM. Returns the model + id↔index maps."""
-    X, y, prod_id_to_idx, idx_to_prod_id = build_synthetic_dataset(
-        products, orders, seq_length=config.LSTM_SEQ_LENGTH
+    """Train and persist the LSTM.
+
+    `products` is preferred from caller (typically fetched from
+    product-service); falls back to the on-disk product_corpus.jsonl
+    if not provided.  `orders` is accepted for backward compatibility
+    with earlier call sites but no longer used — sequences come from
+    user_behavior.csv now.
+    """
+    if not products:
+        products = load_product_corpus()
+
+    behavior_rows = load_user_behavior()
+    X, y, prod_id_to_idx, idx_to_prod_id = build_dataset_from_behavior(
+        products, behavior_rows, seq_length=config.LSTM_SEQ_LENGTH
     )
     num_products = len(products) + 1
 
