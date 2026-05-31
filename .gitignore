@@ -6,3 +6,6 @@ venv/
 db.sqlite3
 *.sqlite3
 .env
+
+# Kaggle raw downloads (large, regenerable)
+ai-service/data/raw/
