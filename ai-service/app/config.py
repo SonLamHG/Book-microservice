@@ -28,6 +28,7 @@ LSTM_WEIGHTS_PATH = DATA_DIR / "lstm_weights.pt"
 LSTM_HIDDEN_DIM   = int(os.environ.get("LSTM_HIDDEN_DIM",   "64"))
 LSTM_SEQ_LENGTH   = int(os.environ.get("LSTM_SEQ_LENGTH",   "5"))
 LSTM_EPOCHS       = int(os.environ.get("LSTM_EPOCHS",       "30"))
+LSTM_BATCH_SIZE   = int(os.environ.get("LSTM_BATCH_SIZE",   "256"))
 LSTM_LR           = float(os.environ.get("LSTM_LR",         "0.01"))
 LSTM_TRAIN_AT_STARTUP = os.environ.get("LSTM_TRAIN_AT_STARTUP", "false").lower() == "true"
 

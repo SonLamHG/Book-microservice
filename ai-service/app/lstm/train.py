@@ -132,18 +132,34 @@ def train(
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=config.LSTM_LR)
 
-    Xt = torch.from_numpy(X).to(device)
-    yt = torch.from_numpy(y).to(device)
+    # Mini-batch training: one-hot tensors are large (N x seq_len x num_products),
+    # so a single full-batch forward would allocate gigabytes of activations.
+    # torch.from_numpy shares memory with X, and we slice per batch so only one
+    # batch worth of one-hot is materialised on the autograd tape at a time.
+    Xt = torch.from_numpy(X)
+    yt = torch.from_numpy(y)
+    n_samples = Xt.shape[0]
+    batch_size = config.LSTM_BATCH_SIZE
 
     model.train()
     for epoch in range(1, config.LSTM_EPOCHS + 1):
-        optimizer.zero_grad()
-        logits = model(Xt)
-        loss = criterion(logits, yt)
-        loss.backward()
-        optimizer.step()
+        perm = torch.randperm(n_samples)
+        epoch_loss = 0.0
+        n_batches = 0
+        for start in range(0, n_samples, batch_size):
+            idx = perm[start:start + batch_size]
+            xb = Xt[idx].to(device)
+            yb = yt[idx].to(device)
+            optimizer.zero_grad()
+            logits = model(xb)
+            loss = criterion(logits, yb)
+            loss.backward()
+            optimizer.step()
+            epoch_loss += loss.item()
+            n_batches += 1
         if epoch % 5 == 0 or epoch == 1:
-            log.info("LSTM epoch %02d/%d  loss=%.4f", epoch, config.LSTM_EPOCHS, loss.item())
+            log.info("LSTM epoch %02d/%d  loss=%.4f",
+                     epoch, config.LSTM_EPOCHS, epoch_loss / max(n_batches, 1))
 
     model.eval()
     torch.save(
@@ -159,3 +175,25 @@ def train(
     )
     log.info("Saved LSTM weights to %s", config.LSTM_WEIGHTS_PATH)
     return model, prod_id_to_idx, idx_to_prod_id
+
+
+def main() -> int:
+    """Offline training entry point (`make train-ai` → `python -m app.lstm.train`).
+
+    Loads the on-disk product corpus + behaviour log, trains the LSTM, and
+    persists weights to config.LSTM_WEIGHTS_PATH. Returns non-zero if no
+    weights were produced so callers/CI can detect failure."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+    train()
+    if not config.LSTM_WEIGHTS_PATH.exists():
+        log.error("Training finished but no weights file at %s", config.LSTM_WEIGHTS_PATH)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(main())
