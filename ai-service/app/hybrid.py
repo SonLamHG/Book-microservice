@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from . import config
+from .behavior_cache import get_history as behavior_history
 from .graph.queries import graph_recommend, user_history
 from .lstm.inference import lstm_inference
 from .rag.index import faiss_index
@@ -50,12 +51,28 @@ def hybrid_recommend(
     name_lookup = {int(r["product_id"]): r.get("name", "") for r in graph_rows}
 
     # ---- 2. LSTM component ----
+    # Primary source: Neo4j BOUGHT edges. Fallback: user_behavior.csv sequences.
     history = user_history(user_id, limit=config.LSTM_SEQ_LENGTH)
+    if not history:
+        history = behavior_history(user_id, limit=config.LSTM_SEQ_LENGTH)
     lstm_rows = lstm_inference.predict(history, top_k=top_k * 4)
     lstm_scores = {int(r["product_id"]): float(r["score"]) for r in lstm_rows}
 
-    # ---- 3. RAG component (only if a query is provided) ----
-    rag_scores = faiss_index.score_for(query) if query else {}
+    # ---- 3. RAG component ----
+    # If no explicit query, auto-build one from the user's recent product names
+    # so the RAG signal is always active for users with any known history.
+    rag_query = query
+    if rag_query is None and history:
+        names = []
+        for pid in history[:3]:
+            pos = faiss_index.id_to_pos.get(pid)
+            if pos is not None:
+                name = faiss_index.products[pos].get("name", "")
+                if name:
+                    names.append(name)
+        if names:
+            rag_query = " ".join(names)
+    rag_scores = faiss_index.score_for(rag_query) if rag_query else {}
 
     # ---- normalise + combine ----
     g, l, r = _normalise(graph_scores), _normalise(lstm_scores), _normalise(rag_scores)

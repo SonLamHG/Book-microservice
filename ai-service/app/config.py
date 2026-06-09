@@ -37,9 +37,11 @@ EMBED_MODEL_NAME = os.environ.get("EMBED_MODEL_NAME", "sentence-transformers/all
 EMBED_DIM        = int(os.environ.get("EMBED_DIM",    "384"))
 
 # ---------- Hybrid scoring weights (must sum ~1.0) ----------
-W_LSTM   = float(os.environ.get("W_LSTM",   "0.4"))
-W_GRAPH  = float(os.environ.get("W_GRAPH",  "0.4"))
-W_RAG    = float(os.environ.get("W_RAG",    "0.2"))
+# RAG (FAISS semantic) is the strongest component (HR@10=81% standalone).
+# LSTM and Graph provide diversity and collaborative signal.
+W_LSTM   = float(os.environ.get("W_LSTM",   "0.2"))
+W_GRAPH  = float(os.environ.get("W_GRAPH",  "0.1"))
+W_RAG    = float(os.environ.get("W_RAG",    "0.7"))
 
 # ---------- LLM (optional — chatbot falls back to template if missing) ----------
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")

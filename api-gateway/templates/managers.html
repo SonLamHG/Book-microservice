@@ -1,36 +1,53 @@
 {% extends 'base.html' %}
 {% block title %}Managers{% endblock %}
 {% block content %}
-<h1>Manager List</h1>
-{% if user_role == 'ADMIN' %}
-<p style="margin-bottom: 15px;">
+<div style="padding:32px 0 24px; border-bottom:1px solid var(--border); margin-bottom:28px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+    <div>
+        <h1 style="margin:0;">Managers</h1>
+        <div style="font-size:13px; color:var(--tx-m); margin-top:3px;">Management team</div>
+    </div>
+    {% if user_role == 'ADMIN' %}
     <a href="/managers/create/" class="btn btn-success">+ Add Manager</a>
-</p>
-{% endif %}
-<table>
-    <tr>
-        <th>ID</th><th>Name</th><th>Email</th><th>Department</th><th>Actions</th>
-    </tr>
-    {% for m in managers %}
-    <tr>
-        <td>{{ m.id }}</td>
-        <td>{{ m.name }}</td>
-        <td>{{ m.email }}</td>
-        <td>{{ m.department }}</td>
-        <td>
-            <div class="actions">
-                {% if user_role == 'ADMIN' %}
-                <a href="/managers/{{ m.id }}/edit/" class="btn btn-sm btn-warning">Edit</a>
-                <form method="post" action="/managers/{{ m.id }}/delete/" style="display: inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this manager?')">Delete</button>
-                </form>
-                {% endif %}
-            </div>
-        </td>
-    </tr>
-    {% empty %}
-    <tr><td colspan="5">No managers found.</td></tr>
-    {% endfor %}
-</table>
+    {% endif %}
+</div>
+
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th style="width:60px;">ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Department</th>
+                <th style="width:160px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in managers %}
+            <tr>
+                <td style="color:var(--tx-f); font-size:12px;">{{ m.id }}</td>
+                <td style="font-weight:500; color:var(--tx);">{{ m.name }}</td>
+                <td>{{ m.email }}</td>
+                <td>{{ m.department|default:"—" }}</td>
+                <td>
+                    <div class="actions">
+                        {% if user_role == 'ADMIN' %}
+                        <a href="/managers/{{ m.id }}/edit/" class="btn btn-sm btn-warning">Edit</a>
+                        <form method="post" action="/managers/{{ m.id }}/delete/">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-danger"
+                                    onclick="return confirm('Delete manager {{ m.name }}?')">Delete</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" style="text-align:center; padding:40px; color:var(--tx-m);">No managers found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% endblock %}

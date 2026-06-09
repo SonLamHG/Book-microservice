@@ -1,24 +1,33 @@
 {% extends 'base.html' %}
 {% block title %}{% if edit %}Edit Manager{% else %}Add Manager{% endif %}{% endblock %}
 {% block content %}
-<h1>{% if edit %}Edit Manager{% else %}Add Manager{% endif %}</h1>
-<div class="card">
-    <form method="post">
-        {% csrf_token %}
-        <div class="form-group">
-            <label>Name</label>
-            <input type="text" name="name" required value="{% if item %}{{ item.name }}{% endif %}">
-        </div>
-        <div class="form-group">
-            <label>Email</label>
-            <input type="email" name="email" required value="{% if item %}{{ item.email }}{% endif %}">
-        </div>
-        <div class="form-group">
-            <label>Department</label>
-            <input type="text" name="department" value="{% if item %}{{ item.department }}{% endif %}">
-        </div>
-        <button type="submit" class="btn btn-success">{% if edit %}Update{% else %}Create{% endif %}</button>
-        <a href="/managers/" class="btn">Cancel</a>
-    </form>
+<div style="padding:32px 0 24px; border-bottom:1px solid var(--border); margin-bottom:28px; display:flex; justify-content:space-between; align-items:center;">
+    <h1 style="margin:0;">{% if edit %}Edit Manager{% else %}Add Manager{% endif %}</h1>
+    <a href="/managers/" class="btn">← Back</a>
+</div>
+<div style="max-width:480px;">
+    <div class="card">
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" name="name" required value="{% if item %}{{ item.name }}{% endif %}" placeholder="Manager name…">
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="email" required value="{% if item %}{{ item.email }}{% endif %}" placeholder="email@example.com">
+            </div>
+            <div class="form-group" style="margin-bottom:24px;">
+                <label>Department</label>
+                <input type="text" name="department" value="{% if item %}{{ item.department }}{% endif %}" placeholder="e.g. Operations">
+            </div>
+            <div style="display:flex; gap:10px;">
+                <button type="submit" class="btn btn-primary">
+                    {% if edit %}Update{% else %}Add Manager{% endif %}
+                </button>
+                <a href="/managers/" class="btn">Cancel</a>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}

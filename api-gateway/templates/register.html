@@ -1,35 +1,88 @@
 {% extends 'base.html' %}
 {% block title %}Register{% endblock %}
+{% block extra_head %}
+<style>
+    .auth-wrap {
+        min-height: calc(100vh - 78px);
+        display: flex; align-items: center; justify-content: center;
+        padding: 40px 20px;
+    }
+    .auth-card {
+        width: 100%; max-width: 420px;
+        background: var(--bg-s); border: 1px solid var(--border);
+        border-radius: var(--r-xl); padding: 40px;
+        position: relative; overflow: hidden;
+    }
+    .auth-card::before {
+        content: '';
+        position: absolute; top: 0; left: 0; right: 0; height: 2px;
+        background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    }
+    .auth-brand {
+        text-align: center; margin-bottom: 32px;
+    }
+    .auth-brand .logo {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 32px; font-weight: 600; color: var(--gold);
+        letter-spacing: .06em; display: block; margin-bottom: 4px;
+    }
+    .auth-brand .tagline {
+        font-size: 11px; color: var(--tx-m); letter-spacing: .2em;
+        text-transform: uppercase;
+    }
+    .auth-title {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 24px; font-weight: 600; color: var(--tx);
+        text-align: center; margin-bottom: 24px;
+    }
+    .auth-footer {
+        text-align: center; margin-top: 20px;
+        font-size: 13px; color: var(--tx-m);
+    }
+    .auth-footer a { color: var(--gold); text-decoration: none; }
+    .auth-footer a:hover { color: var(--gold-lt); }
+</style>
+{% endblock %}
 {% block content %}
-<h1>Register</h1>
-<div class="card">
-    {% if error %}
-    <div class="alert" style="background:#f8d7da;color:#721c24;padding:10px;margin-bottom:15px;border-radius:4px;">{{ error }}</div>
-    {% endif %}
-    <form method="post">
-        {% csrf_token %}
-        <div class="form-group">
-            <label>Username</label>
-            <input type="text" name="username" required>
+<div class="auth-wrap">
+    <div class="auth-card">
+        <div class="auth-brand">
+            <span class="logo">Folio</span>
+            <span class="tagline">Bookstore</span>
         </div>
-        <div class="form-group">
-            <label>Email</label>
-            <input type="email" name="email" required>
+        <div class="auth-title">Create account</div>
+        {% if error %}
+        <div class="alert alert-danger" style="margin-bottom:20px;">{{ error }}</div>
+        {% endif %}
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" name="username" required autofocus autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="email" required autocomplete="email">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" required autocomplete="new-password">
+            </div>
+            <div class="form-group" style="margin-bottom:24px;">
+                <label>Role</label>
+                <select name="role">
+                    <option value="CUSTOMER">Customer</option>
+                    <option value="STAFF">Staff</option>
+                    <option value="MANAGER">Manager</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:12px; font-size:14px;">
+                Create Account
+            </button>
+        </form>
+        <div class="auth-footer">
+            Already have an account? <a href="/auth/login/">Sign in</a>
         </div>
-        <div class="form-group">
-            <label>Password</label>
-            <input type="password" name="password" required>
-        </div>
-        <div class="form-group">
-            <label>Role</label>
-            <select name="role">
-                <option value="CUSTOMER">Customer</option>
-                <option value="STAFF">Staff</option>
-                <option value="MANAGER">Manager</option>
-            </select>
-        </div>
-        <button type="submit" class="btn btn-success">Register</button>
-        <a href="/auth/login/" class="btn">Back to Login</a>
-    </form>
+    </div>
 </div>
 {% endblock %}

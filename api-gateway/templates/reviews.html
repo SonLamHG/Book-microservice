@@ -1,27 +1,77 @@
 {% extends 'base.html' %}
 {% block title %}Reviews{% endblock %}
+{% block extra_head %}
+<style>
+    .book-info-banner {
+        background: var(--bg-s); border: 1px solid var(--border);
+        border-radius: var(--r-lg); padding: 22px 26px;
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 24px; flex-wrap: wrap; gap: 16px;
+    }
+    .book-info-banner .title {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 22px; font-weight: 600; color: var(--tx);
+        margin-bottom: 4px;
+    }
+    .book-info-banner .author { font-size: 13px; color: var(--tx-m); }
+    .book-info-banner .price {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 22px; font-weight: 600; color: var(--gold);
+    }
+    .rating-summary {
+        text-align: center;
+        padding: 0 24px; border-left: 1px solid var(--border);
+    }
+    .rating-big {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 42px; font-weight: 600; color: var(--gold); line-height: 1;
+    }
+    .rating-sub { font-size: 12px; color: var(--tx-m); margin-top: 4px; }
+
+    .review-item {
+        background: var(--bg-s); border: 1px solid var(--border);
+        border-radius: var(--r-lg); padding: 18px 22px; margin-bottom: 12px;
+        transition: border-color .15s;
+    }
+    .review-item:hover { border-color: var(--border-l); }
+    .review-meta {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 8px;
+    }
+    .reviewer { font-size: 13px; font-weight: 500; color: var(--tx-s); }
+    .review-rating { color: #F59E0B; font-size: 15px; }
+    .review-comment { font-size: 14px; color: var(--tx-m); line-height: 1.6; }
+    .review-date { font-size: 11px; color: var(--tx-f); margin-top: 8px; }
+</style>
+{% endblock %}
 {% block content %}
-<h1>Reviews for {% if book_data %}{{ book_data.title }}{% else %}Book #{{ book_id }}{% endif %}</h1>
+<div style="padding:28px 0 24px; border-bottom:1px solid var(--border); margin-bottom:24px;">
+    <h1 style="margin:0;">Reviews</h1>
+    <div style="font-size:13px; color:var(--tx-m); margin-top:3px;">
+        {% if book_data %}{{ book_data.title }}{% else %}Book #{{ book_id }}{% endif %}
+    </div>
+</div>
 
 {% if book_data %}
-<div class="card" style="display: flex; justify-content: space-between; align-items: center;">
+<div class="book-info-banner">
     <div>
-        <strong>{{ book_data.title }}</strong> by {{ book_data.author }}<br>
-        <span style="color: #27ae60; font-size: 1.2em;">${{ book_data.price }}</span>
+        <div class="title">{{ book_data.title }}</div>
+        <div class="author">by {{ book_data.author }}</div>
     </div>
-    {% if review_data.average_rating %}
-    <div style="text-align: center;">
-        <div style="font-size: 2em; color: #f39c12;">{{ review_data.average_rating }}/5</div>
-        <small>{{ review_data.total_reviews }} reviews</small>
+    <div style="display:flex; align-items:center; gap:24px; flex-wrap:wrap;">
+        <span class="price">{{ book_data.price|floatformat:0 }}₫</span>
+        {% if review_data.average_rating %}
+        <div class="rating-summary">
+            <div class="rating-big">{{ review_data.average_rating }}</div>
+            <div class="rating-sub">{{ review_data.total_reviews }} reviews</div>
+        </div>
+        {% endif %}
     </div>
-    {% else %}
-    <div style="color: #999;">No reviews yet</div>
-    {% endif %}
 </div>
 {% endif %}
 
-<div class="card">
-    <h2>Add Review</h2>
+<div class="card" style="margin-bottom:28px;">
+    <h2 style="font-size:18px; margin-bottom:20px;">Write a Review</h2>
     <form method="post" action="/reviews/add/">
         {% csrf_token %}
         <input type="hidden" name="book_id" value="{{ book_id }}">
@@ -33,37 +83,47 @@
             <input type="number" name="customer_id" required value="{{ default_customer_id }}">
         </div>
         {% endif %}
-        <div class="form-group">
-            <label>Rating</label>
-            <select name="rating">
-                <option value="5">5 - Excellent</option>
-                <option value="4">4 - Good</option>
-                <option value="3" selected>3 - Average</option>
-                <option value="2">2 - Poor</option>
-                <option value="1">1 - Terrible</option>
-            </select>
+        <div style="display:grid; grid-template-columns:1fr 2fr; gap:16px;">
+            <div class="form-group" style="margin:0;">
+                <label>Rating</label>
+                <select name="rating">
+                    <option value="5">★★★★★ — Excellent</option>
+                    <option value="4">★★★★☆ — Good</option>
+                    <option value="3" selected>★★★☆☆ — Average</option>
+                    <option value="2">★★☆☆☆ — Poor</option>
+                    <option value="1">★☆☆☆☆ — Terrible</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+                <label>Comment</label>
+                <textarea name="comment" rows="2" placeholder="Share your thoughts about this book…"></textarea>
+            </div>
         </div>
-        <div class="form-group">
-            <label>Comment</label>
-            <textarea name="comment" rows="3"></textarea>
-        </div>
-        <button type="submit" class="btn btn-success">Submit Review</button>
+        <button type="submit" class="btn btn-success" style="margin-top:16px;">Submit Review</button>
     </form>
 </div>
 
 {% if review_data.reviews %}
-<h2>All Reviews</h2>
+<div class="section-label">All Reviews</div>
 {% for review in review_data.reviews %}
-<div class="card">
-    <div style="display: flex; justify-content: space-between;">
-        <strong>Customer #{{ review.customer_id }}</strong>
-        <span style="color: #f39c12;">{{ review.rating }}/5</span>
+<div class="review-item">
+    <div class="review-meta">
+        <span class="reviewer">Reader #{{ review.customer_id }}</span>
+        <span class="review-rating">
+            {% with rating=review.rating %}
+            {% if rating >= 1 %}★{% else %}☆{% endif %}{% if rating >= 2 %}★{% else %}☆{% endif %}{% if rating >= 3 %}★{% else %}☆{% endif %}{% if rating >= 4 %}★{% else %}☆{% endif %}{% if rating >= 5 %}★{% else %}☆{% endif %}
+            {% endwith %}
+        </span>
     </div>
-    {% if review.comment %}<p style="margin-top: 5px;">{{ review.comment }}</p>{% endif %}
-    <small style="color: #999;">{{ review.created_at }}</small>
+    {% if review.comment %}
+    <div class="review-comment">{{ review.comment }}</div>
+    {% endif %}
+    <div class="review-date">{{ review.created_at }}</div>
 </div>
 {% endfor %}
 {% endif %}
 
-<a href="/books/" class="btn" style="margin-top: 10px;">Back to Books</a>
+<div style="margin-top:24px;">
+    <a href="/books/" class="btn">← Back to Books</a>
+</div>
 {% endblock %}

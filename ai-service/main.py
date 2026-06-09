@@ -19,7 +19,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app import config
+from app.behavior_cache import load as load_behavior_cache
 from app.bootstrap import fetch_orders, fetch_products
+from app.datasets import load_user_behavior
 from app.graph.driver import close_driver
 from app.graph.seed import seed_graph
 from app.lstm.inference import lstm_inference
@@ -40,6 +42,13 @@ async def lifespan(app: FastAPI):
 
     products = fetch_products()
     orders = fetch_orders()
+
+    # 1b. Behavior cache — indexes user_behavior.csv for LSTM context fallback.
+    try:
+        behavior_rows = load_user_behavior()
+        load_behavior_cache(behavior_rows)
+    except Exception as exc:
+        log.warning("BehaviorCache load failed: %s", exc)
 
     # 2. LSTM — load pretrained weights by default; train only if explicitly enabled.
     try:

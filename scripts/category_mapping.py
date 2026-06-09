@@ -1,10 +1,10 @@
 """Map Amazon Books `categories` field to internal category_id (1-5).
 
 The internal taxonomy is fixed by data/seed_data.sql:
-  1 = Van hoc Viet Nam       (Fiction / literature / poetry)
+  1 = Tieu thuyet & Van hoc  (Fiction / literature / classics)
   2 = Khoa hoc & Cong nghe   (Programming / science / tech)
   3 = Kinh te & Kinh doanh   (Business / economics / finance)
-  4 = Thieu nhi              (Juvenile / comics / children's)
+  4 = Thieu nhi & Gia tuong  (Juvenile / fantasy / sci-fi / young adult)
   5 = Ky nang song           (Self-help / psychology / philosophy / religion)
 
 Matching strategy: case-insensitive substring search, first hit wins.

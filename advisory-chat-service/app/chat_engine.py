@@ -87,23 +87,38 @@ def _get_chat_history(session, max_messages=10):
     return history
 
 
+def _build_llm_client():
+    """Return (OpenAI client, model_name) using Ollama if LLM_BASE_URL is set."""
+    base_url = getattr(settings, 'LLM_BASE_URL', '')
+    model = getattr(settings, 'LLM_MODEL', 'qwen2.5:3b')
+
+    if base_url:
+        # Ollama or any OpenAI-compatible local endpoint
+        client = OpenAI(base_url=base_url, api_key='ollama')
+        return client, model
+
+    api_key = getattr(settings, 'OPENAI_API_KEY', '')
+    if not api_key:
+        return None, model
+    return OpenAI(api_key=api_key), model
+
+
 def generate_chat_response(session, user_message):
     """
     Main RAG pipeline:
     1. Search KB with user query
     2. Build customer context
     3. Assemble prompt with history
-    4. Call OpenAI API
+    4. Call LLM (Ollama or OpenAI)
     5. Return response + context used
 
     Returns: (response_text, context_dict)
     """
-    api_key = getattr(settings, 'OPENAI_API_KEY', '')
-    model = getattr(settings, 'OPENAI_MODEL', 'gpt-4o-mini')
+    client, model = _build_llm_client()
 
-    if not api_key:
+    if client is None:
         return (
-            "Hệ thống chat tư vấn chưa được cấu hình API key. "
+            "Hệ thống chat tư vấn chưa được cấu hình. "
             "Vui lòng liên hệ quản trị viên.",
             None,
         )
@@ -127,9 +142,8 @@ def generate_chat_response(session, user_message):
     messages.extend(chat_history)
     messages.append({'role': 'user', 'content': user_message})
 
-    # Step 5: Call OpenAI API
+    # Step 5: Call LLM
     try:
-        client = OpenAI(api_key=api_key)
         completion = client.chat.completions.create(
             model=model,
             messages=messages,
@@ -138,7 +152,7 @@ def generate_chat_response(session, user_message):
         )
         response_text = completion.choices[0].message.content
     except Exception as e:
-        logger.error("OpenAI API error: %s", e)
+        logger.error("LLM API error: %s", e)
         raise
 
     # Build context metadata for logging

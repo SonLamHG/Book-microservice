@@ -114,10 +114,10 @@ def emit_corpus(subset: pd.DataFrame) -> None:
     """Write product_corpus.jsonl with the exact shape ai-service expects.
     See ai-service/app/datasets.py load_product_corpus for consumer."""
     CATEGORY_NAMES = {
-        1: "Van hoc Viet Nam",
+        1: "Tieu thuyet & Van hoc",
         2: "Khoa hoc & Cong nghe",
         3: "Kinh te & Kinh doanh",
-        4: "Thieu nhi",
+        4: "Thieu nhi & Gia tuong",
         5: "Ky nang song",
     }
     rows = []

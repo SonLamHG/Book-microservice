@@ -1,9 +1,9 @@
 -- ========== catalog-service ==========
 INSERT INTO app_category (id, name, description, created_at) VALUES
-(1, 'Van hoc Viet Nam', 'Tieu thuyet, truyen ngan, tho ca Viet Nam', NOW()),
+(1, 'Tieu thuyet & Van hoc', 'Tieu thuyet, van hoc nuoc ngoai, tac pham kinh dien', NOW()),
 (2, 'Khoa hoc & Cong nghe', 'Sach ve khoa hoc, lap trinh, cong nghe', NOW()),
 (3, 'Kinh te & Kinh doanh', 'Sach ve kinh te, quan tri, tai chinh', NOW()),
-(4, 'Thieu nhi', 'Truyen tranh, sach giao duc cho tre em', NOW()),
+(4, 'Thieu nhi & Gia tuong', 'Truyen thieu nhi, gia tuong, khoa hoc vien tuong', NOW()),
 (5, 'Ky nang song', 'Sach phat trien ban than, tam ly', NOW()),
 (6, 'Dien thoai & May tinh bang', 'Smartphone, tablet, phu kien', NOW()),
 (7, 'Laptop & PC', 'Laptop van phong, gaming, thiet bi tinh', NOW()),

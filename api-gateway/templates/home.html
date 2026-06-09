@@ -1,16 +1,94 @@
 {% extends 'base.html' %}
 {% block title %}Home{% endblock %}
+{% block extra_head %}
+<style>
+    .hero {
+        padding: 52px 0 44px;
+        position: relative;
+    }
+    .hero-eyebrow {
+        display: flex; align-items: center; gap: 10px;
+        font-size: 11px; font-weight: 600; letter-spacing: .25em;
+        text-transform: uppercase; color: var(--gold);
+        margin-bottom: 18px;
+    }
+    .hero-eyebrow::before {
+        content: ''; width: 28px; height: 1px;
+        background: var(--gold); opacity: .7;
+    }
+    .hero h1 {
+        font-size: clamp(38px, 5.5vw, 68px);
+        font-weight: 600; line-height: 1.08;
+        margin-bottom: 20px;
+        background: linear-gradient(140deg, var(--tx) 35%, var(--gold-lt) 100%);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    .hero-sub {
+        font-size: 15.5px; color: var(--tx-m);
+        max-width: 480px; line-height: 1.75; margin-bottom: 36px;
+    }
+    .hero-actions { display:flex; gap:12px; flex-wrap:wrap; }
+
+    .divider-gold {
+        height: 1px; margin: 36px 0;
+        background: linear-gradient(90deg, transparent, var(--gold) 40%, transparent);
+        opacity: .18;
+    }
+
+    .ql-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+        gap: 12px;
+    }
+    .ql-card {
+        background: var(--bg-s); border: 1px solid var(--border);
+        border-radius: var(--r-lg); padding: 20px 18px;
+        text-decoration: none; display: block;
+        transition: border-color .2s, transform .2s, box-shadow .2s;
+        position: relative; overflow: hidden;
+    }
+    .ql-card::before {
+        content: ''; position: absolute; inset: 0;
+        background: radial-gradient(ellipse at 0 0, var(--gold-dim), transparent 55%);
+        opacity: 0; transition: opacity .2s;
+    }
+    .ql-card:hover {
+        border-color: rgba(201,168,76,.38);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    }
+    .ql-card:hover::before { opacity: 1; }
+    .ql-icon { font-size: 20px; margin-bottom: 10px; display: block; }
+    .ql-card h3 {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 13.5px; font-weight: 600; color: var(--tx);
+        margin-bottom: 3px;
+    }
+    .ql-card p { font-size: 12px; color: var(--tx-m); }
+</style>
+{% endblock %}
 {% block content %}
-<h1>BookStore Microservice System</h1>
+<div class="hero">
+    <div class="hero-eyebrow">Your Literary Destination</div>
+    <h1>Where Every Story<br>Finds Its Reader.</h1>
+    <p class="hero-sub">Discover curated collections, AI-powered recommendations, and a seamless reading journey built for book lovers.</p>
+    <div class="hero-actions">
+        <a href="/books/" class="btn btn-primary">Browse Collection</a>
+        {% if customer_id %}
+            <a href="/recommendations/{{ customer_id }}/" class="btn">✦ Picks For You</a>
+        {% endif %}
+    </div>
+</div>
 
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-num">{{ stats.books }}</div>
-        <div class="stat-label">Books</div>
+        <div class="stat-label">Titles</div>
     </div>
     <div class="stat-card">
         <div class="stat-num">{{ stats.customers }}</div>
-        <div class="stat-label">Customers</div>
+        <div class="stat-label">Readers</div>
     </div>
     <div class="stat-card">
         <div class="stat-num">{{ stats.orders }}</div>
@@ -28,21 +106,55 @@
     {% endif %}
 </div>
 
-<div class="card">
-    <h2>Quick Links</h2>
-    <p style="margin: 10px 0;">
-        <a href="/books/" class="btn">Browse Books</a>
-        {% if customer_id %}
-            <a href="/cart/{{ customer_id }}/" class="btn btn-success">My Cart</a>
-            <a href="/orders/{{ customer_id }}/" class="btn">My Orders</a>
-            <a href="/recommendations/{{ customer_id }}/" class="btn">Recommendations</a>
-        {% endif %}
-        {% if user_role == 'STAFF' or user_role == 'MANAGER' or user_role == 'ADMIN' %}
-            <a href="/customers/" class="btn btn-success">Manage Customers</a>
-            <a href="/categories/" class="btn">Categories</a>
-            <a href="/staff/" class="btn">Staff</a>
-            <a href="/managers/" class="btn">Managers</a>
-        {% endif %}
-    </p>
+<div class="divider-gold"></div>
+
+<div class="section-label">Quick Access</div>
+<div class="ql-grid">
+    <a href="/books/" class="ql-card">
+        <span class="ql-icon">📚</span>
+        <h3>Browse Books</h3>
+        <p>Explore the full collection</p>
+    </a>
+    {% if customer_id %}
+    <a href="/cart/{{ customer_id }}/" class="ql-card">
+        <span class="ql-icon">🛒</span>
+        <h3>My Cart</h3>
+        <p>View selected items</p>
+    </a>
+    <a href="/orders/{{ customer_id }}/" class="ql-card">
+        <span class="ql-icon">📦</span>
+        <h3>My Orders</h3>
+        <p>Track your purchases</p>
+    </a>
+    <a href="/recommendations/{{ customer_id }}/" class="ql-card">
+        <span class="ql-icon">✨</span>
+        <h3>For You</h3>
+        <p>AI-powered picks</p>
+    </a>
+    {% endif %}
+    {% if user_role == 'STAFF' or user_role == 'MANAGER' or user_role == 'ADMIN' %}
+    <a href="/customers/" class="ql-card">
+        <span class="ql-icon">👥</span>
+        <h3>Customers</h3>
+        <p>Manage accounts</p>
+    </a>
+    <a href="/categories/" class="ql-card">
+        <span class="ql-icon">🏷️</span>
+        <h3>Categories</h3>
+        <p>Manage genres</p>
+    </a>
+    <a href="/staff/" class="ql-card">
+        <span class="ql-icon">🎖️</span>
+        <h3>Staff</h3>
+        <p>Staff management</p>
+    </a>
+    {% if user_role == 'MANAGER' or user_role == 'ADMIN' %}
+    <a href="/managers/" class="ql-card">
+        <span class="ql-icon">🏛️</span>
+        <h3>Managers</h3>
+        <p>Manager accounts</p>
+    </a>
+    {% endif %}
+    {% endif %}
 </div>
 {% endblock %}

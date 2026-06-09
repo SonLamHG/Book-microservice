@@ -1,62 +1,116 @@
 {% extends 'base.html' %}
 {% block title %}Orders{% endblock %}
+{% block extra_head %}
+<style>
+    .order-card {
+        background: var(--bg-s); border: 1px solid var(--border);
+        border-radius: var(--r-lg); margin-bottom: 16px; overflow: hidden;
+        transition: border-color .2s;
+    }
+    .order-card:hover { border-color: var(--border-l); }
+
+    .order-header {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 18px 22px; border-bottom: 1px solid var(--border);
+        flex-wrap: wrap; gap: 10px;
+    }
+    .order-id {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 20px; font-weight: 600; color: var(--tx);
+    }
+    .order-id span { font-size: 13px; color: var(--tx-m); font-family:'DM Sans',sans-serif; font-weight:400; margin-left:6px; }
+    .order-status { }
+
+    .order-body { padding: 0; }
+    .order-table { margin: 0; }
+    .order-table th { font-size: 11px; padding: 11px 22px; }
+    .order-table td { padding: 11px 22px; font-size: 13px; }
+
+    .order-footer {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 14px 22px;
+        background: var(--bg-e); border-top: 1px solid var(--border);
+        flex-wrap: wrap; gap: 8px;
+    }
+    .order-footer .meta { font-size: 12px; color: var(--tx-m); display:flex; gap:16px; flex-wrap:wrap; }
+    .order-total {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 22px; font-weight: 600; color: var(--gold);
+    }
+
+    /* Status color helpers */
+    .status-COMPLETED  { background:var(--ok-bg);   color:var(--ok);   border:1px solid rgba(74,222,128,.25); }
+    .status-CANCELLED  { background:var(--err-bg);  color:var(--err);  border:1px solid rgba(248,113,113,.25); }
+    .status-CONFIRMED  { background:var(--warn-bg); color:var(--warn); border:1px solid rgba(251,146,60,.25); }
+    .status-PAID       { background:var(--ok-bg);   color:var(--ok);   border:1px solid rgba(74,222,128,.25); }
+    .status-SHIPPING   { background:var(--info-bg); color:var(--info); border:1px solid rgba(96,165,250,.25); }
+    .status-PENDING    { background:var(--bg-e);    color:var(--tx-m); border:1px solid var(--border-l); }
+</style>
+{% endblock %}
 {% block content %}
-<h1>Orders for {{ customer_name|default:"Customer" }} (#{{ customer_id }})</h1>
+<div style="padding:32px 0 24px; border-bottom:1px solid var(--border); margin-bottom:28px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+    <div>
+        <h1 style="margin:0;">Order History</h1>
+        <div style="font-size:13px; color:var(--tx-m); margin-top:3px;">{{ customer_name|default:"Customer" }} &mdash; #{{ customer_id }}</div>
+    </div>
+    <a href="/cart/{{ customer_id }}/" class="btn btn-primary">← Back to Cart</a>
+</div>
 
 {% for order in orders %}
-<div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-        <h2 style="margin: 0;">Order #{{ order.id }}</h2>
-        <span class="btn btn-sm
-            {% if order.status == 'COMPLETED' %}btn-success
-            {% elif order.status == 'CANCELLED' %}btn-danger
-            {% elif order.status == 'CONFIRMED' %}btn-warning
-            {% else %}{% endif %}"
-            style="cursor: default;">
-            {{ order.status }}
-        </span>
+<div class="order-card">
+    <div class="order-header">
+        <div class="order-id">
+            Order #{{ order.id }}
+            <span>{{ order.created_at|slice:":10" }}</span>
+        </div>
+        <span class="badge status-{{ order.status }}">{{ order.status }}</span>
     </div>
-    <table style="margin-bottom: 10px;">
-        <tr>
-            <th>Book</th><th>Price</th><th>Qty</th><th>Subtotal</th>
-        </tr>
-        {% for item in order.items %}
-        <tr>
-            <td>{% if item.book %}{{ item.book.title }}{% else %}Book #{{ item.book_id }}{% endif %}</td>
-            <td>${{ item.price }}</td>
-            <td>{{ item.quantity }}</td>
-            <td>${{ item.price|floatformat:2 }}</td>
-        </tr>
-        {% endfor %}
-        <tr class="total-row">
-            <td colspan="3" style="text-align: right;">Total:</td>
-            <td>${{ order.total_amount }}</td>
-        </tr>
-    </table>
-    <small style="color: #999;">
-        Payment: {{ order.payment_method }} |
-        Shipping: {{ order.shipping_method }} |
-        Date: {{ order.created_at }}
-    </small>
+    <div class="order-body">
+        <table class="order-table">
+            <thead>
+                <tr>
+                    <th>Book</th>
+                    <th style="text-align:right;">Unit Price</th>
+                    <th style="text-align:center;">Qty</th>
+                    <th style="text-align:right;">Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in order.items %}
+                <tr>
+                    <td>{% if item.book %}{{ item.book.title }}{% else %}Book #{{ item.book_id }}{% endif %}</td>
+                    <td style="text-align:right; color:var(--tx-m);">{{ item.price|floatformat:0 }}₫</td>
+                    <td style="text-align:center;">{{ item.quantity }}</td>
+                    <td style="text-align:right;">{{ item.price|floatformat:0 }}₫</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="order-footer">
+        <div class="meta">
+            <span>💳 {{ order.payment_method }}</span>
+            <span>🚚 {{ order.shipping_method }}</span>
+        </div>
+        <span class="order-total">{{ order.total_amount|floatformat:0 }}₫</span>
+    </div>
 </div>
 {% empty %}
-<div class="alert alert-info">No orders found.</div>
+<div style="text-align:center; padding:80px 20px; color:var(--tx-m);">
+    <div style="font-size:48px; margin-bottom:16px; opacity:.4;">📦</div>
+    <p>No orders yet. <a href="/books/" style="color:var(--gold);">Start browsing →</a></p>
+</div>
 {% endfor %}
 
 {% if total_pages > 1 %}
 <div class="pagination">
     {% if page > 1 %}
-        <a href="?page={{ page|add:"-1" }}" class="btn btn-sm">Previous</a>
+    <a href="?page={{ page|add:"-1" }}" class="btn btn-sm">← Previous</a>
     {% endif %}
     <span class="page-info">Page {{ page }} of {{ total_pages }}</span>
     {% if page < total_pages %}
-        <a href="?page={{ page|add:"1" }}" class="btn btn-sm">Next</a>
+    <a href="?page={{ page|add:"1" }}" class="btn btn-sm">Next →</a>
     {% endif %}
 </div>
 {% endif %}
-
-<p style="margin-top: 15px;">
-    <a href="/cart/{{ customer_id }}/" class="btn">Back to Cart</a>
-    <a href="/customers/" class="btn">Back to Customers</a>
-</p>
 {% endblock %}

@@ -1,17 +1,20 @@
 {% extends "base.html" %}
 {% block title %}Behavior Analysis{% endblock %}
 {% block content %}
-<h1>Customer Behavior Analysis</h1>
-{% if customer_name %}
-<h2>{{ customer_name }} (ID: {{ customer_id }})</h2>
-{% else %}
-<h2>Customer #{{ customer_id }}</h2>
-{% endif %}
+<div style="padding:32px 0 24px; border-bottom:1px solid var(--border); margin-bottom:28px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+    <div>
+        <h1 style="margin:0;">Behavior Analysis</h1>
+        <div style="font-size:13px; color:var(--tx-m); margin-top:3px;">
+            {% if customer_name %}{{ customer_name }}{% else %}Customer{% endif %} &mdash; #{{ customer_id }}
+        </div>
+    </div>
+    <a href="/" class="btn">← Home</a>
+</div>
 
 {% if behavior %}
-<div class="stats-grid">
+<div class="stats-grid" style="margin-bottom:28px;">
     <div class="stat-card">
-        <div class="stat-num">{{ behavior.segment|default:"N/A" }}</div>
+        <div class="stat-num" style="font-size:28px;">{{ behavior.segment|default:"N/A" }}</div>
         <div class="stat-label">Segment</div>
     </div>
     <div class="stat-card">
@@ -19,59 +22,58 @@
         <div class="stat-label">Total Orders</div>
     </div>
     <div class="stat-card">
-        <div class="stat-num">{{ behavior.total_spent|default:"0" }}</div>
-        <div class="stat-label">Total Spent (VND)</div>
+        <div class="stat-num" style="font-size:24px;">{{ behavior.total_spent|default:"0" }}₫</div>
+        <div class="stat-label">Total Spent</div>
     </div>
     <div class="stat-card">
-        <div class="stat-num">{{ behavior.avg_order_value|default:"0" }}</div>
+        <div class="stat-num" style="font-size:24px;">{{ behavior.avg_order_value|default:"0" }}₫</div>
         <div class="stat-label">Avg Order Value</div>
     </div>
 </div>
 
 <div class="card">
-    <h2>Details</h2>
-    <table>
-        <tr>
-            <th>Metric</th>
-            <th>Value</th>
-        </tr>
-        <tr>
-            <td>Average Rating Given</td>
-            <td>{{ behavior.avg_rating_given|default:"N/A" }} / 5</td>
-        </tr>
-        <tr>
-            <td>Purchase Frequency</td>
-            <td>{% if behavior.purchase_frequency_days %}Every {{ behavior.purchase_frequency_days }} days{% else %}N/A{% endif %}</td>
-        </tr>
-        <tr>
-            <td>Last Order</td>
-            <td>{{ behavior.last_order_date|default:"N/A" }}</td>
-        </tr>
-        <tr>
-            <td>Favorite Categories</td>
-            <td>
-                {% for cat in behavior.favorite_categories %}
-                    {{ cat.name }} ({{ cat.count }}){% if not forloop.last %}, {% endif %}
-                {% empty %}
-                    N/A
-                {% endfor %}
-            </td>
-        </tr>
-        <tr>
-            <td>Favorite Authors</td>
-            <td>
-                {% for a in behavior.favorite_authors %}
-                    {{ a.author }} ({{ a.count }}){% if not forloop.last %}, {% endif %}
-                {% empty %}
-                    N/A
-                {% endfor %}
-            </td>
-        </tr>
-    </table>
+    <h2 style="font-size:18px; margin-bottom:16px;">Detailed Metrics</h2>
+    <div class="table-wrap" style="margin:0;">
+        <table>
+            <thead>
+                <tr><th>Metric</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="color:var(--tx-m);">Average Rating Given</td>
+                    <td style="color:var(--tx);">{{ behavior.avg_rating_given|default:"N/A" }} / 5</td>
+                </tr>
+                <tr>
+                    <td style="color:var(--tx-m);">Purchase Frequency</td>
+                    <td style="color:var(--tx);">
+                        {% if behavior.purchase_frequency_days %}Every {{ behavior.purchase_frequency_days }} days{% else %}N/A{% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td style="color:var(--tx-m);">Last Order</td>
+                    <td style="color:var(--tx);">{{ behavior.last_order_date|default:"N/A" }}</td>
+                </tr>
+                <tr>
+                    <td style="color:var(--tx-m);">Favourite Categories</td>
+                    <td style="color:var(--tx);">
+                        {% for cat in behavior.favorite_categories %}
+                        <span class="badge badge-info" style="margin-right:4px;">{{ cat.name }} ({{ cat.count }})</span>
+                        {% empty %}N/A{% endfor %}
+                    </td>
+                </tr>
+                <tr>
+                    <td style="color:var(--tx-m);">Favourite Authors</td>
+                    <td style="color:var(--tx);">
+                        {% for a in behavior.favorite_authors %}
+                        <span style="margin-right:8px;">{{ a.author }} ({{ a.count }})</span>
+                        {% empty %}N/A{% endfor %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 </div>
 {% else %}
 <div class="alert alert-info">No behavior data available for this customer.</div>
 {% endif %}
-
-<a href="/" class="btn">Back to Home</a>
 {% endblock %}

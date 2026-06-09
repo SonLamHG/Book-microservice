@@ -45,9 +45,12 @@ REST_FRAMEWORK = {
     ],
 }
 
-# OpenAI API
+# LLM backend — set LLM_BASE_URL to use Ollama (or any OpenAI-compatible endpoint)
+# e.g. LLM_BASE_URL=http://host.docker.internal:11434/v1, LLM_MODEL=qwen2.5:3b
+# Falls back to OpenAI when LLM_BASE_URL is empty and OPENAI_API_KEY is set.
+LLM_BASE_URL = os.environ.get('LLM_BASE_URL', '')
+LLM_MODEL = os.environ.get('LLM_MODEL', 'qwen2.5:3b')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
-OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-4o-mini')
 
 # Service URLs
 PRODUCT_SERVICE_URL = os.environ.get('PRODUCT_SERVICE_URL', 'http://product-service:8000')
