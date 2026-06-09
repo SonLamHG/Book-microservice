@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 import pymysql
-pymysql.version_info = (1, 4, 0, "final", 0)
+pymysql.version_info = (1, 4, 6, "final", 0)  # satisfy Django's MySQLdb >= 1.4.3 version check
 pymysql.install_as_MySQLdb()
 
 BASE_DIR = Path(__file__).resolve().parent.parent

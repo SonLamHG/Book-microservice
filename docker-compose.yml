@@ -38,7 +38,10 @@ services:
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
-      - --default-authentication-plugin=caching_sha2_password
+      # NOTE: --default-authentication-plugin was removed in MySQL 8.4
+      # (caching_sha2_password is already the built-in default), so passing
+      # it makes mysqld abort on a fresh data dir. Use the auth plugin var
+      # only if a different default is ever needed.
     environment:
       MYSQL_ROOT_PASSWORD: bookstore-mysql
     ports:
