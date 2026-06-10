@@ -3,48 +3,54 @@
 {% block extra_head %}
 <style>
     .order-card {
-        background: var(--bg-s); border: 1px solid var(--border);
+        background: #fff; border: 1px solid var(--border);
         border-radius: var(--r-lg); margin-bottom: 16px; overflow: hidden;
-        transition: border-color .2s;
+        transition: box-shadow .2s;
+        box-shadow: var(--shadow-xs);
     }
-    .order-card:hover { border-color: var(--border-l); }
+    .order-card:hover { box-shadow: var(--shadow-md); }
 
     .order-header {
         display: flex; justify-content: space-between; align-items: center;
-        padding: 18px 22px; border-bottom: 1px solid var(--border);
+        padding: 16px 22px; border-bottom: 1px solid var(--border-l);
         flex-wrap: wrap; gap: 10px;
+        background: var(--bg-s);
     }
     .order-id {
-        font-family: 'Cormorant Garamond', serif;
-        font-size: 20px; font-weight: 600; color: var(--tx);
+        font-family: 'Fraunces', serif;
+        font-size: 19px; font-weight: 500; color: var(--tx);
     }
-    .order-id span { font-size: 13px; color: var(--tx-m); font-family:'DM Sans',sans-serif; font-weight:400; margin-left:6px; }
-    .order-status { }
+    .order-id span {
+        font-size: 13px; color: var(--tx-m);
+        font-family:'Jost',sans-serif; font-weight:400; margin-left:6px;
+    }
 
     .order-body { padding: 0; }
     .order-table { margin: 0; }
-    .order-table th { font-size: 11px; padding: 11px 22px; }
+    .order-table th { font-size: 11px; padding: 10px 22px; }
     .order-table td { padding: 11px 22px; font-size: 13px; }
 
     .order-footer {
         display: flex; justify-content: space-between; align-items: center;
-        padding: 14px 22px;
-        background: var(--bg-e); border-top: 1px solid var(--border);
+        padding: 12px 22px;
+        background: var(--bg-s); border-top: 1px solid var(--border-l);
         flex-wrap: wrap; gap: 8px;
     }
-    .order-footer .meta { font-size: 12px; color: var(--tx-m); display:flex; gap:16px; flex-wrap:wrap; }
+    .order-footer .meta {
+        font-size: 12px; color: var(--tx-m);
+        display:flex; gap:16px; flex-wrap:wrap;
+    }
     .order-total {
-        font-family: 'Cormorant Garamond', serif;
-        font-size: 22px; font-weight: 600; color: var(--gold);
+        font-family: 'Fraunces', serif;
+        font-size: 21px; font-weight: 500; color: var(--sage);
     }
 
-    /* Status color helpers */
-    .status-COMPLETED  { background:var(--ok-bg);   color:var(--ok);   border:1px solid rgba(74,222,128,.25); }
-    .status-CANCELLED  { background:var(--err-bg);  color:var(--err);  border:1px solid rgba(248,113,113,.25); }
-    .status-CONFIRMED  { background:var(--warn-bg); color:var(--warn); border:1px solid rgba(251,146,60,.25); }
-    .status-PAID       { background:var(--ok-bg);   color:var(--ok);   border:1px solid rgba(74,222,128,.25); }
-    .status-SHIPPING   { background:var(--info-bg); color:var(--info); border:1px solid rgba(96,165,250,.25); }
-    .status-PENDING    { background:var(--bg-e);    color:var(--tx-m); border:1px solid var(--border-l); }
+    .status-COMPLETED  { background:var(--ok-bg);   color:var(--ok);   border:1px solid rgba(61,122,82,.2); }
+    .status-CANCELLED  { background:var(--err-bg);  color:var(--err);  border:1px solid rgba(176,64,64,.2); }
+    .status-CONFIRMED  { background:var(--warn-bg); color:var(--warn); border:1px solid rgba(184,115,42,.2); }
+    .status-PAID       { background:var(--ok-bg);   color:var(--ok);   border:1px solid rgba(61,122,82,.2); }
+    .status-SHIPPING   { background:var(--info-bg); color:var(--info); border:1px solid rgba(58,96,128,.2); }
+    .status-PENDING    { background:var(--bg-e);    color:var(--tx-m); border:1px solid var(--border); }
 </style>
 {% endblock %}
 {% block content %}
@@ -97,8 +103,8 @@
 </div>
 {% empty %}
 <div style="text-align:center; padding:80px 20px; color:var(--tx-m);">
-    <div style="font-size:48px; margin-bottom:16px; opacity:.4;">📦</div>
-    <p>No orders yet. <a href="/books/" style="color:var(--gold);">Start browsing →</a></p>
+    <div style="font-size:48px; margin-bottom:16px; opacity:.35;">📦</div>
+    <p>No orders yet. <a href="/books/" style="color:var(--sage);">Start browsing →</a></p>
 </div>
 {% endfor %}
 

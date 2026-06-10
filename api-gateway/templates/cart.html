@@ -14,54 +14,60 @@
 
     .cart-item {
         display: flex; justify-content: space-between; align-items: center;
-        padding: 16px 0; border-bottom: 1px solid var(--border); gap: 16px;
+        padding: 16px 0; border-bottom: 1px solid var(--border-l); gap: 16px;
     }
     .cart-item:last-child { border-bottom: none; }
     .cart-item-info { flex: 1; min-width: 0; }
     .cart-item-title {
-        font-family: 'Cormorant Garamond', serif;
-        font-size: 17px; font-weight: 600; color: var(--tx);
+        font-family: 'Fraunces', serif;
+        font-size: 16px; font-weight: 500; color: var(--tx);
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .cart-item-price { font-size: 13px; color: var(--tx-m); margin-top: 3px; }
+    .cart-item-price { font-size: 13px; color: var(--tx-m); margin-top: 2px; }
     .cart-item-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
     .cart-item-subtotal {
-        font-family: 'Cormorant Garamond', serif;
-        font-size: 18px; font-weight: 600; color: var(--gold);
+        font-family: 'Fraunces', serif;
+        font-size: 17px; font-weight: 500; color: var(--sage);
         min-width: 80px; text-align: right;
     }
     .qty-input {
         width: 58px; padding: 6px 8px; text-align: center;
-        background: var(--bg); border: 1px solid var(--border-l);
-        border-radius: var(--r); color: var(--tx); font-size: 13px;
-        font-family: 'DM Sans', sans-serif; outline: none;
+        background: var(--bg); border: 1px solid var(--border);
+        border-radius: var(--r-sm); color: var(--tx); font-size: 13px;
+        font-family: 'Jost', sans-serif; outline: none;
+        transition: border-color .15s;
     }
-    .qty-input:focus { border-color: var(--gold); }
+    .qty-input:focus { border-color: var(--sage); }
 
     .cart-empty {
         text-align: center; padding: 60px 20px; color: var(--tx-m);
     }
-    .cart-empty .icon { font-size: 48px; margin-bottom: 16px; opacity: .4; }
+    .cart-empty .icon { font-size: 48px; margin-bottom: 16px; opacity: .35; }
 
     .order-form-card {
-        background: var(--bg-s); border: 1px solid var(--border);
-        border-radius: var(--r-lg); padding: 24px; position: sticky; top: 80px;
+        background: #fff; border: 1px solid var(--border);
+        border-radius: var(--r-lg); padding: 24px;
+        position: sticky; top: 76px;
+        box-shadow: var(--shadow-sm);
     }
-    .order-form-card h2 { font-size: 20px; margin-bottom: 20px; }
+    .order-form-card h2 { font-size: 19px; margin-bottom: 20px; }
     .total-line {
         display: flex; justify-content: space-between; align-items: center;
         padding: 14px 0; border-top: 1px solid var(--border);
         margin-top: 12px;
     }
-    .total-line .label { font-size: 13px; color: var(--tx-m); text-transform: uppercase; letter-spacing: .08em; }
+    .total-line .label {
+        font-size: 12px; color: var(--tx-m);
+        text-transform: uppercase; letter-spacing: .1em; font-weight: 600;
+    }
     .total-line .amount {
-        font-family: 'Cormorant Garamond', serif;
-        font-size: 26px; font-weight: 600; color: var(--gold);
+        font-family: 'Fraunces', serif;
+        font-size: 26px; font-weight: 400; color: var(--sage);
     }
 
     .add-book-row {
         display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;
-        padding: 16px 0; border-bottom: 1px solid var(--border); margin-bottom: 8px;
+        padding: 16px 0; border-bottom: 1px solid var(--border-l); margin-bottom: 8px;
     }
 </style>
 {% endblock %}
@@ -78,11 +84,10 @@
 </div>
 
 <div class="cart-layout">
-    <!-- Left: items + add-book -->
     <div>
         <div class="card" style="margin-bottom:20px;">
             <div class="card-header" style="margin-bottom:12px;">
-                <h2 style="font-size:18px; margin:0;">Add a Book</h2>
+                <h2 style="font-size:17px; margin:0;">Add a Book</h2>
             </div>
             <form method="post" action="/cart/add/" class="add-book-row" data-no-load>
                 {% csrf_token %}
@@ -105,7 +110,7 @@
         </div>
 
         <div class="card">
-            <h2 style="font-size:18px; margin-bottom:16px;">Cart Items</h2>
+            <h2 style="font-size:17px; margin-bottom:16px;">Cart Items</h2>
             {% if items %}
                 {% for item in items %}
                 <div class="cart-item">
@@ -134,13 +139,12 @@
             {% else %}
             <div class="cart-empty">
                 <div class="icon">🛒</div>
-                <p>Your cart is empty. <a href="/books/" style="color:var(--gold);">Browse books →</a></p>
+                <p>Your cart is empty. <a href="/books/" style="color:var(--sage);">Browse books →</a></p>
             </div>
             {% endif %}
         </div>
     </div>
 
-    <!-- Right: order summary -->
     {% if items %}
     <div class="order-form-card">
         <h2>Place Order</h2>

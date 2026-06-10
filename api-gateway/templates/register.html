@@ -9,45 +9,50 @@
     }
     .auth-card {
         width: 100%; max-width: 420px;
-        background: var(--bg-s); border: 1px solid var(--border);
-        border-radius: var(--r-xl); padding: 40px;
+        background: #fff; border: 1px solid var(--border);
+        border-radius: var(--r-xl); padding: 44px 40px;
         position: relative; overflow: hidden;
+        box-shadow: var(--shadow-md);
     }
     .auth-card::before {
         content: '';
-        position: absolute; top: 0; left: 0; right: 0; height: 2px;
-        background: linear-gradient(90deg, transparent, var(--gold), transparent);
+        position: absolute; top: 0; left: 0; right: 0; height: 3px;
+        background: linear-gradient(90deg, var(--sage), var(--sage-lt));
+        border-radius: 22px 22px 0 0;
     }
     .auth-brand {
-        text-align: center; margin-bottom: 32px;
+        text-align: center; margin-bottom: 36px;
     }
     .auth-brand .logo {
-        font-family: 'Cormorant Garamond', serif;
-        font-size: 32px; font-weight: 600; color: var(--gold);
-        letter-spacing: .06em; display: block; margin-bottom: 4px;
+        font-family: 'Fraunces', serif;
+        font-style: italic;
+        font-size: 34px; font-weight: 400; color: var(--tx);
+        display: block; margin-bottom: 4px; letter-spacing: -.3px;
     }
+    .auth-brand .logo span { color: var(--sage); font-style: normal; }
     .auth-brand .tagline {
         font-size: 11px; color: var(--tx-m); letter-spacing: .2em;
         text-transform: uppercase;
     }
     .auth-title {
-        font-family: 'Cormorant Garamond', serif;
-        font-size: 24px; font-weight: 600; color: var(--tx);
-        text-align: center; margin-bottom: 24px;
+        font-family: 'Fraunces', serif;
+        font-size: 22px; font-weight: 400; color: var(--tx);
+        text-align: center; margin-bottom: 28px;
+        letter-spacing: -.2px;
     }
     .auth-footer {
-        text-align: center; margin-top: 20px;
+        text-align: center; margin-top: 22px;
         font-size: 13px; color: var(--tx-m);
     }
-    .auth-footer a { color: var(--gold); text-decoration: none; }
-    .auth-footer a:hover { color: var(--gold-lt); }
+    .auth-footer a { color: var(--sage); text-decoration: none; font-weight: 500; }
+    .auth-footer a:hover { text-decoration: underline; }
 </style>
 {% endblock %}
 {% block content %}
 <div class="auth-wrap">
     <div class="auth-card">
         <div class="auth-brand">
-            <span class="logo">Folio</span>
+            <span class="logo">Folio<span>.</span></span>
             <span class="tagline">Bookstore</span>
         </div>
         <div class="auth-title">Create account</div>

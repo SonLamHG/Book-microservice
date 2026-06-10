@@ -14,7 +14,7 @@
 {% if behavior %}
 <div class="stats-grid" style="margin-bottom:28px;">
     <div class="stat-card">
-        <div class="stat-num" style="font-size:28px;">{{ behavior.segment|default:"N/A" }}</div>
+        <div class="stat-num" style="font-size:26px;">{{ behavior.segment|default:"N/A" }}</div>
         <div class="stat-label">Segment</div>
     </div>
     <div class="stat-card">
@@ -22,17 +22,17 @@
         <div class="stat-label">Total Orders</div>
     </div>
     <div class="stat-card">
-        <div class="stat-num" style="font-size:24px;">{{ behavior.total_spent|default:"0" }}₫</div>
+        <div class="stat-num" style="font-size:22px;">{{ behavior.total_spent|default:"0" }}₫</div>
         <div class="stat-label">Total Spent</div>
     </div>
     <div class="stat-card">
-        <div class="stat-num" style="font-size:24px;">{{ behavior.avg_order_value|default:"0" }}₫</div>
+        <div class="stat-num" style="font-size:22px;">{{ behavior.avg_order_value|default:"0" }}₫</div>
         <div class="stat-label">Avg Order Value</div>
     </div>
 </div>
 
 <div class="card">
-    <h2 style="font-size:18px; margin-bottom:16px;">Detailed Metrics</h2>
+    <h2 style="font-size:17px; margin-bottom:16px;">Detailed Metrics</h2>
     <div class="table-wrap" style="margin:0;">
         <table>
             <thead>
